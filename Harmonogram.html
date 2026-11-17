@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harmonogram projektu</title>
+<style>
+:root{
+  --navy:#1f3864; --blue:#2f6eb5; --lblue:#a6c8ec; --red:#c00000; --lred:#f4b6b6;
+  --bg:#f3f5f9; --line:#dde2ea; --txt:#1d2433; --mut:#6b7385; --rowh:28px; --hh:48px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:"Segoe UI",Calibri,Arial,sans-serif;font-size:13px;color:var(--txt);background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+button,input,select,textarea{font-family:inherit;font-size:13px}
+header.top{background:var(--navy);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:14px}
+header.top h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+#pname{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:4px;padding:4px 8px;min-width:260px;font-size:14px;font-weight:600}
+#pname:focus{outline:2px solid #ffc000}
+.toolbar{background:#fff;border-bottom:1px solid var(--line);padding:6px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.toolbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+.btn{background:#fff;border:1px solid #c5ccd8;border-radius:5px;padding:5px 10px;cursor:pointer;color:var(--txt);white-space:nowrap}
+.btn:hover{background:#eef3fb;border-color:#9fb3d1}
+.btn:disabled{opacity:.4;cursor:default;background:#fff}
+.btn.pri{background:#1e7a3c;border-color:#1e7a3c;color:#fff;font-weight:600}
+.btn.pri:hover{background:#176330}
+.toolbar label{display:flex;align-items:center;gap:4px;color:var(--mut)}
+.tabs{display:flex;gap:2px;padding:6px 10px 0;background:var(--bg)}
+.tab{padding:6px 16px;border:1px solid var(--line);border-bottom:none;border-radius:6px 6px 0 0;background:#e6eaf1;cursor:pointer;color:var(--mut)}
+.tab.on{background:#fff;color:var(--navy);font-weight:600}
+.main{flex:1;display:flex;min-height:0;background:#fff;border-top:1px solid var(--line)}
+#left{width:720px;min-width:260px;display:flex;flex-direction:column;overflow-x:auto;overflow-y:hidden;position:relative}
+#leftIn{display:flex;flex-direction:column;min-height:0;flex:1}
+#tHead{height:var(--hh);display:flex;flex:none;background:#eaeef5;border-bottom:1px solid #c5ccd8;position:sticky;top:0;z-index:2}
+#tBody{flex:1;overflow:hidden;position:relative;padding-bottom:40px}
+.hc{padding:4px 6px;font-weight:600;font-size:12px;color:var(--navy);display:flex;align-items:center;border-right:1px solid #d3d9e4;flex:none;line-height:1.15}
+.row{display:flex;height:var(--rowh);border-bottom:1px solid #eef0f4}
+.row.sel{background:#e7f0fd}
+.row.sumrow{background:#f4f7fb;font-weight:600}
+.row.sumrow.sel{background:#e7f0fd}
+.c{flex:none;display:flex;align-items:center;border-right:1px solid #eef0f4;overflow:hidden;position:relative}
+.c input{width:100%;height:100%;border:none;background:transparent;padding:0 6px;outline:none;color:inherit;font-weight:inherit}
+.c input:focus{background:#fff;box-shadow:inset 0 0 0 2px var(--blue)}
+.c input:disabled{color:#555}
+.c input.err{background:#fde8e8;box-shadow:inset 0 0 0 2px #d33}
+.c .ro{padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;color:#333}
+.c-num{justify-content:center;color:var(--mut);cursor:pointer;background:#f7f8fb}
+.c-wbs{color:var(--mut)}
+.tg{width:16px;flex:none;text-align:center;cursor:pointer;color:var(--mut);user-select:none}
+.crit-t .c-name input,.crit-t .c-num{color:var(--red)}
+.num-r input{text-align:right}
+.hint{padding:40px;color:var(--mut);text-align:center}
+#split{width:6px;cursor:col-resize;background:#dde2ea;flex:none}
+#split:hover{background:var(--blue)}
+#right{flex:1;overflow:auto;position:relative;min-width:200px}
+#gInner{position:relative}
+#gHead{height:var(--hh);position:sticky;top:0;z-index:3;background:#eaeef5;border-bottom:1px solid #c5ccd8;display:flex;flex-direction:column}
+.gh1,.gh2{display:flex;height:24px;overflow:hidden;white-space:nowrap}
+.gh1{border-bottom:1px solid #d3d9e4}
+.gh1 div,.gh2 div{flex:none;text-align:center;font-size:11px;line-height:23px;border-right:1px solid #d3d9e4;overflow:hidden;color:var(--navy)}
+.gh2 div.we{background:#dfe4ec;color:#7a8396}
+.gh2 div.td{background:#ffc000;color:#000;font-weight:700}
+#gBody{position:relative}
+.grow{position:absolute;left:0;right:0;height:var(--rowh);border-bottom:1px solid #eef0f4}
+.grow.sel{background:#e7f0fd}
+.nw{position:absolute;top:0;bottom:0;background:rgba(120,130,150,.08)}
+.today{position:absolute;top:0;bottom:0;width:2px;background:#ff8c00;opacity:.8;z-index:1}
+.bar{position:absolute;height:16px;border-radius:3px;background:var(--lblue);border:1px solid #7ea6d6;overflow:hidden;z-index:2}
+.bar .pg{height:100%;background:var(--blue)}
+.bar.crit{background:var(--lred);border-color:#d98b8b}
+.bar.crit .pg{background:var(--red)}
+.bar.sum{background:#404040;border-color:#202020;height:9px;border-radius:0;overflow:visible}
+.bar.sum .pg{background:#000}
+.bar.sum::before,.bar.sum::after{content:"";position:absolute;top:7px;border:5px solid transparent;border-top:5px solid #404040}
+.bar.sum::before{left:0;border-left-color:#404040}
+.bar.sum::after{right:0;border-right-color:#404040}
+.ms{position:absolute;width:14px;height:14px;background:#7030a0;transform:rotate(45deg);z-index:2;border:1px solid #fff}
+.ms.crit{background:var(--red)}
+.bl{position:absolute;height:4px;background:#9aa3b3;border-radius:2px;z-index:1}
+.lbl{position:absolute;font-size:11px;color:#444;white-space:nowrap;z-index:2;line-height:16px}
+svg.links{position:absolute;left:0;top:0;pointer-events:none;z-index:2}
+#viewRes,#viewHelp{flex:1;overflow:auto;background:#fff;padding:14px;border-top:1px solid var(--line)}
+table.rt{border-collapse:collapse;font-size:12px}
+table.rt th,table.rt td{border:1px solid #dde2ea;padding:3px 6px;text-align:center;white-space:nowrap}
+table.rt th{background:#eaeef5;color:var(--navy);position:sticky;top:0}
+table.rt td.nm,table.rt th.nm{text-align:left;position:sticky;left:0;background:#fff;font-weight:600}
+table.rt td.ov{background:#f4b183;font-weight:700}
+table.rt td.ok{background:#ddebf7}
+#status{background:var(--navy);color:#dfe8f7;padding:5px 14px;display:flex;gap:18px;font-size:12px;flex-wrap:wrap}
+#status b{color:#fff}
+#status .warn{color:#ffd966;font-weight:600}
+dialog{border:1px solid #9fb3d1;border-radius:8px;padding:0;min-width:460px;max-width:560px}
+dialog::backdrop{background:rgba(20,30,50,.45)}
+dialog form{padding:18px 20px}
+dialog h2{margin:0 0 12px;font-size:16px;color:var(--navy)}
+dialog .f{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}
+dialog .f>label{font-weight:600;color:var(--navy)}
+dialog input[type=text],dialog input[type=date],dialog textarea{border:1px solid #c5ccd8;border-radius:4px;padding:6px 8px}
+dialog .days{display:flex;gap:10px;flex-wrap:wrap}
+dialog .days label{display:flex;gap:3px;align-items:center;font-weight:400}
+dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.help h3{color:var(--navy);margin:14px 0 4px}
+.help code{background:#eef1f6;padding:1px 5px;border-radius:3px}
+.help p,.help li{line-height:1.5;max-width:860px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>📅 Harmonogram projektu</h1>
+  <input id="pname" title="Nazwa projektu" placeholder="Nazwa projektu">
+</header>
+
+<div class="toolbar" id="toolbar">
+  <button class="btn" id="bNew" title="Nowy, pusty projekt">Nowy</button>
+  <button class="btn" id="bOpen" title="Otwórz projekt z pliku .json">Otwórz…</button>
+  <button class="btn" id="bSave" title="Zapisz projekt do pliku .json (do dalszej edycji)">Zapisz projekt</button>
+  <button class="btn pri" id="bXlsx" title="Wygeneruj plik Excel z wykresem Gantta do rozesłania">⬇ Eksport do Excela</button>
+  <span class="sep"></span>
+  <button class="btn" id="bUndo" title="Ctrl+Z">↶ Cofnij</button>
+  <button class="btn" id="bRedo" title="Ctrl+Y">↷ Ponów</button>
+  <span class="sep"></span>
+  <button class="btn" id="bAdd">+ Zadanie</button>
+  <button class="btn" id="bAddMs">+ Kamień milowy</button>
+  <button class="btn" id="bDel">Usuń</button>
+  <button class="btn" id="bUp" title="Przesuń w górę">↑</button>
+  <button class="btn" id="bDown" title="Przesuń w dół">↓</button>
+  <button class="btn" id="bOut" title="Wysuń (poziom wyżej)">⇤</button>
+  <button class="btn" id="bIn" title="Wcięcie (podzadanie poprzedniego wiersza)">⇥</button>
+  <span class="sep"></span>
+  <button class="btn" id="bBase" title="Zapisz aktualne terminy jako plan bazowy">Zapisz plan bazowy</button>
+  <button class="btn" id="bBaseClr">Usuń bazowy</button>
+  <span class="sep"></span>
+  <label>Skala
+    <select id="zoom"><option value="day">Dni</option><option value="week" selected>Tygodnie</option><option value="month">Miesiące</option></select>
+  </label>
+  <label><input type="checkbox" id="chCrit" checked> Ścieżka krytyczna</label>
+  <label><input type="checkbox" id="chBase" checked> Plan bazowy</label>
+  <button class="btn" id="bToday">Dziś</button>
+  <span class="sep"></span>
+  <button class="btn" id="bSet">⚙ Ustawienia / kalendarz</button>
+  <button class="btn" id="bSample">Przykład</button>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-tab="gantt">Harmonogram</div>
+  <div class="tab" data-tab="res">Obciążenie zasobów</div>
+  <div class="tab" data-tab="help">Jak używać</div>
+</div>
+
+<div class="main" id="viewGantt">
+  <div id="left"><div id="leftIn"><div id="tHead"></div><div id="tBody"></div></div></div>
+  <div id="split"></div>
+  <div id="right"><div id="gInner"><div id="gHead"></div><div id="gBody"></div></div></div>
+</div>
+<div id="viewRes" hidden></div>
+<div id="viewHelp" class="help" hidden>
+  <h3>Podstawy</h3>
+  <ul>
+    <li>Wpisuj nazwy zadań i <b>czas w dniach roboczych</b>. Daty początku i końca liczą się same na podstawie zależności i kalendarza (weekendy i polskie święta są pomijane).</li>
+    <li><b>Czas 0</b> oznacza kamień milowy (◆). Wcięcie (<code>⇥</code>) robi z zadania podzadanie – wiersz nadrzędny staje się podsumowaniem i sam liczy daty oraz postęp.</li>
+    <li>Kliknij numer wiersza lub dowolną komórkę, aby zaznaczyć zadanie, a potem użyj przycisków na pasku (dodaj, usuń, przesuń, wcięcie).</li>
+  </ul>
+  <h3>Poprzednicy</h3>
+  <p>W kolumnie „Poprzednicy” wpisz numery wierszy (Lp.), rozdzielone przecinkiem, np. <code>2, 3</code>. Rodzaj powiązania i opóźnienie dopisz za numerem:</p>
+  <ul>
+    <li><code>3</code> lub <code>3ZR</code> – zakończenie→rozpoczęcie (domyślne)</li>
+    <li><code>3RR</code> – rozpoczęcie→rozpoczęcie, <code>3ZZ</code> – zakończenie→zakończenie, <code>3RZ</code> – rozpoczęcie→zakończenie</li>
+    <li><code>3+2</code> – opóźnienie o 2 dni robocze, <code>3-1</code> – zakładka 1 dnia, <code>3RR+2</code> – oba naraz</li>
+  </ul>
+  <h3>Czas i zasoby</h3>
+  <p>Czas możesz wpisać jako <code>5</code>, <code>5d</code> lub <code>2w</code> (2 tygodnie = 10 dni). Zasoby wpisuj po przecinku, opcjonalnie z obłożeniem: <code>Anna, Piotr[50%]</code>. Zakładka „Obciążenie zasobów” pokazuje tygodnie, w których ktoś jest przeciążony (czerwone pola).</p>
+  <h3>Ścieżka krytyczna i plan bazowy</h3>
+  <p>Zadania na ścieżce krytycznej (zapas 0) są czerwone. „Zapisz plan bazowy” zapamiętuje obecne terminy – później na wykresie i w Excelu zobaczysz odchylenia.</p>
+  <h3>Rozsyłanie do zainteresowanych</h3>
+  <p><b>Eksport do Excela</b> tworzy plik .xlsx z arkuszami: <i>Gantt</i> (wykres z grupowaniem faz), <i>Lista zadań</i> (wszystkie kolumny z filtrem), <i>Kamienie milowe</i> i <i>Obciążenie zasobów</i>. Plik jest gotowy do wysłania mailem. Dane robocze zapisuj przyciskiem „Zapisz projekt” (.json) – tym plikiem wrócisz do edycji. Program zapamiętuje też ostatni stan w przeglądarce.</p>
+</div>
+
+<div id="status"></div>
+
+<dialog id="dlgSet">
+  <form method="dialog" id="fSet">
+    <h2>Ustawienia projektu i kalendarz</h2>
+    <div class="f"><label>Data rozpoczęcia projektu</label><input type="date" id="sStart"></div>
+    <div class="f"><label>Dni robocze</label>
+      <div class="days" id="sDays"></div></div>
+    <div class="f"><label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="sPl"> Uwzględnij polskie dni ustawowo wolne od pracy</label></div>
+    <div class="f"><label>Dodatkowe dni wolne (jedna data w wierszu, RRRR-MM-DD)</label><textarea id="sCust" rows="4" placeholder="2026-12-28"></textarea></div>
+    <div class="act"><button class="btn" value="cancel" type="button" id="sCancel">Anuluj</button><button class="btn pri" value="ok" id="sOk">Zapisz</button></div>
+  </form>
+</dialog>
+
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+/* =====================  DATY I KALENDARZ  ===================== */
+const DAY=86400000;
+const dnFromYMD=(y,m,d)=>Math.floor(Date.UTC(y,m,d)/DAY);
+const ymd=dn=>{const d=new Date(dn*DAY);return{y:d.getUTCFullYear(),m:d.getUTCMonth(),d:d.getUTCDate()}};
+const dow=dn=>(((dn+4)%7)+7)%7; // 0=niedziela
+const pad=n=>String(n).padStart(2,'0');
+const isoToDn=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(s||'');return m?dnFromYMD(+m[1],+m[2]-1,+m[3]):null};
+const dnToIso=dn=>{const t=ymd(dn);return `${t.y}-${pad(t.m+1)}-${pad(t.d)}`};
+const fmtD=dn=>{const t=ymd(dn);return `${pad(t.d)}.${pad(t.m+1)}.${t.y}`};
+const fmtDM=dn=>{const t=ymd(dn);return `${pad(t.d)}.${pad(t.m+1)}`};
+const todayDn=()=>{const n=new Date();return dnFromYMD(n.getFullYear(),n.getMonth(),n.getDate())};
+const MON_FULL=['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
+const MON_SH=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
+const mondayOf=dn=>dn-((dow(dn)+6)%7);
+
+function easter(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+  g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,
+  m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return dnFromYMD(y,mo-1,da);
+}
+const holCache=new Map();
+function plHolidays(y){
+  if(holCache.has(y))return holCache.get(y);
+  const s=new Set(),e=easter(y);
+  [[0,1],[0,6],[4,1],[4,3],[7,15],[10,1],[10,11],[11,25],[11,26]].forEach(([m,d])=>s.add(dnFromYMD(y,m,d)));
+  if(y>=2025)s.add(dnFromYMD(y,11,24));
+  [e,e+1,e+49,e+60].forEach(x=>s.add(x));
+  holCache.set(y,s);return s;
+}
+
+let cal={wd:[],wdSet:new Set(),custom:new Set(),polish:true};
+function isWork(dn){
+  if(!cal.wdSet.has(dow(dn)))return false;
+  if(cal.custom.has(dn))return false;
+  if(cal.polish&&plHolidays(ymd(dn).y).has(dn))return false;
+  return true;
+}
+function buildCal(){
+  cal.wdSet=new Set(P.workdays.length?P.workdays:[1,2,3,4,5]);
+  cal.polish=!!P.polish;
+  cal.custom=new Set((P.custom||'').split(/[\s,;]+/).map(isoToDn).filter(x=>x!==null));
+  let start=isoToDn(P.start);if(start===null){start=todayDn();P.start=dnToIso(start)}
+  cal.H0=start;const wd=[];
+  for(let d=start;wd.length<4500&&d<start+365*40;d++)if(isWork(d))wd.push(d);
+  if(!wd.length)wd.push(start);
+  cal.wd=wd;
+}
+function lb(dn){ // pierwszy slot dnia roboczego >= dn
+  const w=cal.wd;if(dn<=w[0])return 0;
+  let lo=0,hi=w.length-1;
+  if(dn>w[hi])return hi;
+  while(lo<hi){const m=(lo+hi)>>1;if(w[m]>=dn)hi=m;else lo=m+1}
+  return lo;
+}
+const wdAt=s=>cal.wd[Math.min(Math.max(s,0),cal.wd.length-1)];
+
+/* =====================  MODEL  ===================== */
+let uidN=0;const newUid=()=>'t'+Date.now().toString(36)+(uidN++).toString(36);
+let P={name:'Nowy projekt',start:'',polish:true,custom:'',workdays:[1,2,3,4,5]};
+let tasks=[];
+const ui={sel:null,zoom:'week',crit:true,base:true,tab:'gantt'};
+let R=[];       // wyniki harmonogramowania
+let VIS=[];     // widoczne indeksy
+let calcInfo={cycle:false,end:0,start:0,critN:0,pct:0,wdays:0};
+
+function mkTask(o){return Object.assign({uid:newUid(),name:'',dur:1,level:0,preds:[],res:'',pct:0,snet:'',notes:'',collapsed:false,bs:null,be:null},o||{})}
+function nextMonday(){let d=todayDn();while(dow(d)!==1)d++;return d}
+
+function normalize(){
+  tasks.forEach((t,i)=>{
+    const max=i===0?0:tasks[i-1].level+1;
+    if(t.level>max)t.level=max;if(t.level<0)t.level=0;
+    t.dur=Math.max(0,Math.round(+t.dur||0));
+    t.pct=Math.min(100,Math.max(0,Math.round(+t.pct||0)));
+  });
+}
+function lastDesc(i){let j=i;while(j+1<tasks.length&&tasks[j+1].level>tasks[i].level)j++;return j}
+const isSum=i=>i+1<tasks.length&&tasks[i+1].level>tasks[i].level;
+
+/* =====================  HARMONOGRAMOWANIE  ===================== */
+function calc(){
+  buildCal();normalize();
+  const n=tasks.length;
+  const idxOf=new Map(tasks.map((t,i)=>[t.uid,i]));
+  const sum=tasks.map((t,i)=>isSum(i));
+  const parent=Array(n).fill(-1),stack=[];
+  tasks.forEach((t,i)=>{while(stack.length&&tasks[stack[stack.length-1]].level>=t.level)stack.pop();parent[i]=stack.length?stack[stack.length-1]:-1;stack.push(i)});
+  const children=tasks.map(()=>[]);parent.forEach((p,i)=>{if(p>=0)children[p].push(i)});
+  // WBS
+  const wbs=Array(n).fill(''),cnt=new Map();
+  tasks.forEach((t,i)=>{const p=parent[i];const c=(cnt.get(p)||0)+1;cnt.set(p,c);wbs[i]=(p>=0?wbs[p]+'.':'')+c});
+  // poprzednicy
+  const pr=tasks.map((t,i)=>sum[i]?[]:t.preds.map(p=>({j:idxOf.get(p.u),t:p.t,l:p.l})).filter(p=>p.j!==undefined&&p.j!==i));
+  const S=Array(n).fill(0),E=Array(n).fill(0);
+  const dur=tasks.map((t,i)=>sum[i]?0:t.dur);
+  const snet=tasks.map((t,i)=>{
+    const d=isoToDn(t.snet);if(d===null)return 0;
+    const k=lb(d);return dur[i]===0?(cal.wd[k]===d?k+1:k):k;
+  });
+  let changed=true,it=0,cycle=false;
+  while(changed){
+    changed=false;
+    if(it++>n+5){cycle=true;break}
+    for(let i=0;i<n;i++){
+      if(sum[i])continue;
+      let s=snet[i];const D=dur[i];
+      for(const p of pr[i]){
+        let c;
+        switch(p.t){
+          case'SS':c=S[p.j]+p.l;break;
+          case'FF':c=E[p.j]+p.l-D;break;
+          case'SF':c=S[p.j]+p.l-D;break;
+          default:c=E[p.j]+p.l;
+        }
+        if(c>s)s=c;
+      }
+      if(s<0)s=0;
+      if(s!==S[i]||E[i]!==s+D){S[i]=s;E[i]=s+D;changed=true}
+    }
+    for(let i=n-1;i>=0;i--){
+      if(!sum[i])continue;
+      let a=Infinity,b=-Infinity;
+      for(const c of children[i]){if(S[c]<a)a=S[c];if(E[c]>b)b=E[c]}
+      if(S[i]!==a||E[i]!==b){S[i]=a;E[i]=b;changed=true}
+    }
+  }
+  // wynik podstawowy
+  const leaves=[];for(let i=0;i<n;i++)if(!sum[i])leaves.push(i);
+  let projEnd=0;leaves.forEach(i=>{if(E[i]>projEnd)projEnd=E[i]});
+  // przejście wstecz
+  const LF=Array(n).fill(projEnd);
+  const LS=i=>LF[i]-(E[i]-S[i]);
+  const leavesOf=j=>{if(!sum[j])return[j];const r=[];for(let x=j+1;x<=lastDesc(j);x++)if(!sum[x])r.push(x);return r};
+  const lcache=new Map();const lo=j=>{if(!lcache.has(j))lcache.set(j,leavesOf(j));return lcache.get(j)};
+  if(!cycle){
+    let ch=true,it2=0;
+    while(ch&&it2++<n+5){
+      ch=false;
+      for(const k of leaves)for(const p of pr[k]){
+        for(const c of lo(p.j)){
+          const D=E[c]-S[c];let b;
+          switch(p.t){
+            case'SS':b=LS(k)-p.l+D;break;
+            case'FF':b=LF[k]-p.l;break;
+            case'SF':b=LF[k]-p.l+D;break;
+            default:b=LS(k)-p.l;
+          }
+          if(b<LF[c]){LF[c]=b;ch=true}
+        }
+      }
+    }
+  }
+  // wyniki
+  R=tasks.map((t,i)=>({i,sum:sum[i],mile:!sum[i]&&dur[i]===0,S:S[i],E:E[i],wbs:wbs[i],level:t.level,parent:parent[i],
+    float:0,crit:false,pct:t.pct,dur:E[i]-S[i],sd:0,ed:0}));
+  R.forEach(r=>{
+    if(r.E===r.S){r.sd=r.ed=wdAt(Math.max(r.S-1,0))}
+    else{r.sd=wdAt(r.S);r.ed=wdAt(r.E-1)}
+  });
+  leaves.forEach(i=>{R[i].float=LF[i]-E[i];R[i].crit=!cycle&&R[i].float<=0});
+  for(let i=n-1;i>=0;i--){
+    if(!sum[i])continue;
+    const ch=children[i];
+    R[i].float=Math.min(...ch.map(c=>R[c].float));
+    R[i].crit=ch.some(c=>R[c].crit);
+    let w=0,a=0;
+    for(let x=i+1;x<=lastDesc(i);x++)if(!sum[x]){w+=R[x].dur;a+=R[x].dur*tasks[x].pct}
+    if(w>0)R[i].pct=Math.round(a/w);
+    else{const ls=lo(i);R[i].pct=ls.length?Math.round(ls.reduce((s,x)=>s+tasks[x].pct,0)/ls.length):0}
+  }
+  // widoczne
+  VIS=[];let hideLevel=Infinity;
+  tasks.forEach((t,i)=>{
+    if(t.level>hideLevel)return;hideLevel=Infinity;
+    VIS.push(i);
+    if(sum[i]&&t.collapsed)hideLevel=t.level;
+  });
+  // info
+  let mn=Infinity,mx=-Infinity,tw=0,ta=0,cn=0;
+  leaves.forEach(i=>{if(R[i].sd<mn)mn=R[i].sd;if(R[i].ed>mx)mx=R[i].ed;tw+=R[i].dur;ta+=R[i].dur*tasks[i].pct;if(R[i].crit&&!R[i].mile)cn++});
+  calcInfo={cycle,start:n?mn:isoToDn(P.start),end:n?mx:isoToDn(P.start),critN:cn,pct:tw?Math.round(ta/tw):0,wdays:n?(projEnd):0,projEnd};
+}
+
+/* =====================  PARSOWANIE POLA  ===================== */
+const TYPE_IN={FS:'FS',ZR:'FS',SS:'SS',RR:'SS',FF:'FF',ZZ:'FF',SF:'SF',RZ:'SF',PP:'SS'};
+const TYPE_OUT={FS:'',SS:'RR',FF:'ZZ',SF:'RZ'};
+function predToStr(t){
+  const idx=new Map(tasks.map((x,i)=>[x.uid,i+1]));
+  return t.preds.filter(p=>idx.has(p.u)).map(p=>idx.get(p.u)+TYPE_OUT[p.t]+(p.l?(p.l>0?'+':'')+p.l:'')).join(', ');
+}
+function parsePreds(str,selfIdx){
+  const out=[];const s=(str||'').trim();if(!s)return out;
+  for(const raw of s.split(/[,;]+/)){
+    const tk=raw.trim();if(!tk)continue;
+    const m=/^(\d+)\s*(FS|SS|FF|SF|ZR|RR|ZZ|RZ|PP)?\s*([+-]\s*\d+)?\s*(?:d|dn|dni)?$/i.exec(tk);
+    if(!m)throw new Error(`Nieprawidłowy zapis „${tk}”`);
+    const row=+m[1];
+    if(row<1||row>tasks.length)throw new Error(`Brak wiersza nr ${row}`);
+    if(row-1===selfIdx)throw new Error('Zadanie nie może być własnym poprzednikiem');
+    out.push({u:tasks[row-1].uid,t:TYPE_IN[(m[2]||'FS').toUpperCase()],l:m[3]?parseInt(m[3].replace(/\s/g,''),10):0});
+  }
+  return out;
+}
+function parseDur(s){
+  const m=/^\s*(\d+(?:[.,]\d+)?)\s*([dw]?)/i.exec(s||'');
+  if(!m)return null;let v=parseFloat(m[1].replace(',','.'));
+  if(m[2].toLowerCase()==='w')v*=cal.wdSet.size||5;
+  return Math.max(0,Math.round(v));
+}
+function parseRes(str){
+  return (str||'').split(/[,;]+/).map(x=>x.trim()).filter(Boolean).map(x=>{
+    const m=/^(.*?)\s*(?:\[\s*(\d+)\s*%?\s*\])?$/.exec(x);
+    return{name:m[1].trim(),units:m[2]?+m[2]/100:1};
+  }).filter(r=>r.name);
+}
+
+/* =====================  UNDO  ===================== */
+let undoS=[],redoS=[];
+const snap=()=>JSON.stringify({P,tasks});
+function pushUndo(){undoS.push(snap());if(undoS.length>150)undoS.shift();redoS=[]}
+function restore(s){const o=JSON.parse(s);P=o.P;tasks=o.tasks;fullRender()}
+function undo(){if(!undoS.length)return;redoS.push(snap());restore(undoS.pop())}
+function redo(){if(!redoS.length)return;undoS.push(snap());restore(redoS.pop())}
+
+/* =====================  TABELA  ===================== */
+const COLS=[
+  {k:'num',t:'Lp.',w:40},{k:'wbs',t:'WBS',w:54},{k:'name',t:'Nazwa zadania',w:270},
+  {k:'dur',t:'Czas (dni rob.)',w:70},{k:'start',t:'Start',w:88},{k:'end',t:'Koniec',w:88},
+  {k:'pred',t:'Poprzednicy',w:104},{k:'res',t:'Zasoby',w:130},{k:'pct',t:'% ukoń.',w:58},
+  {k:'snet',t:'Nie wcześniej niż',w:122},{k:'float',t:'Zapas (dni)',w:58},{k:'notes',t:'Uwagi',w:230}];
+const TOTW=COLS.reduce((s,c)=>s+c.w,0);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+const ROWH=28;
+
+function renderHead(){
+  $('tHead').style.width=TOTW+'px';
+  $('tHead').innerHTML=COLS.map(c=>`<div class="hc" style="width:${c.w}px">${c.t}</div>`).join('');
+}
+function rowHtml(i){
+  const t=tasks[i],r=R[i];
+  const w=k=>COLS.find(c=>c.k===k).w;
+  const cell=(k,inner,cls='')=>`<div class="c c-${k} ${cls}" style="width:${w(k)}px">${inner}</div>`;
+  const dis=r.sum?'disabled':'';
+  const sel=ui.sel===t.uid?' sel':'';
+  const tg=r.sum?`<span class="tg" data-tg="1">${t.collapsed?'▸':'▾'}</span>`:'<span class="tg"></span>';
+  const mile=r.mile?'◆ ':'';
+  return `<div class="row${r.sum?' sumrow':''}${sel}${r.crit&&ui.crit?' crit-t':''}" data-i="${i}">`+
+    cell('num',i+1)+
+    cell('wbs',`<span class="ro" data-cf="wbs">${r.wbs}</span>`)+
+    `<div class="c c-name" style="width:${w('name')}px;padding-left:${t.level*16}px">${tg}<input data-f="name" value="${esc(t.name)}" placeholder="${r.mile?'Kamień milowy':'Nazwa zadania'}"></div>`+
+    cell('dur',`<input data-f="dur" data-cf="dur" value="${r.sum?r.dur:t.dur}" ${dis}>`,'num-r')+
+    cell('start',`<span class="ro" data-cf="start"></span>`)+
+    cell('end',`<span class="ro" data-cf="end"></span>`)+
+    cell('pred',`<input data-f="pred" value="${esc(predToStr(t))}" ${dis}>`)+
+    cell('res',`<input data-f="res" value="${esc(t.res)}" ${dis}>`)+
+    cell('pct',`<input data-f="pct" data-cf="pct" value="${r.sum?r.pct:t.pct}" ${dis}>`,'num-r')+
+    cell('snet',`<input type="date" data-f="snet" value="${esc(t.snet)}" ${dis}>`)+
+    cell('float',`<span class="ro" data-cf="float" style="text-align:right"></span>`)+
+    cell('notes',`<input data-f="notes" value="${esc(t.notes)}">`)+
+    `</div>`;
+}
+function renderTable(){
+  renderHead();
+  const tb=$('tBody');
+  tb.style.width=TOTW+'px';
+  if(!tasks.length){tb.innerHTML='<div class="hint">Projekt jest pusty.<br>Kliknij <b>+ Zadanie</b>, aby dodać pierwsze zadanie, albo <b>Przykład</b>, aby zobaczyć gotowy harmonogram.</div>';return}
+  tb.innerHTML=VIS.map(rowHtml).join('');
+  refreshComputed();
+}
+function refreshComputed(){
+  const tb=$('tBody');
+  tb.querySelectorAll('.row').forEach(row=>{
+    const i=+row.dataset.i,r=R[i],t=tasks[i];if(!r)return;
+    row.classList.toggle('crit-t',r.crit&&ui.crit);
+    row.classList.toggle('sumrow',r.sum);
+    const set=(k,v)=>{const e=row.querySelector(`[data-cf="${k}"]`);if(e){if('value'in e){if(document.activeElement!==e)e.value=v}else e.textContent=v}};
+    set('wbs',r.wbs);set('start',fmtD(r.sd));set('end',fmtD(r.ed));
+    set('float',r.float);
+    if(r.sum){set('dur',r.dur);set('pct',r.pct)}
+  });
+}
+
+/* =====================  GANTT NA EKRANIE  ===================== */
+let gView={v0:0,px:10};
+function renderGantt(){
+  const px={day:26,week:10,month:3.4}[ui.zoom];
+  let mn=Infinity,mx=-Infinity;
+  R.forEach(r=>{if(r.sd<mn)mn=r.sd;if(r.ed>mx)mx=r.ed});
+  if(!R.length){mn=isoToDn(P.start);mx=mn+30}
+  const v0=mondayOf(mn-4),v1=mx+28;
+  const nd=v1-v0+1,W=Math.ceil(nd*px);
+  gView={v0,px,W};
+  // nagłówek
+  let h1='',h2='';
+  if(ui.zoom==='month'){
+    let d=v0;
+    while(d<=v1){const t=ymd(d);const yEnd=dnFromYMD(t.y+1,0,1);const e=Math.min(yEnd-1,v1);h1+=`<div style="width:${(e-d+1)*px}px">${t.y}</div>`;d=e+1}
+    d=v0;
+    while(d<=v1){const t=ymd(d);const mEnd=dnFromYMD(t.y,t.m+1,1);const e=Math.min(mEnd-1,v1);h2+=`<div style="width:${(e-d+1)*px}px">${MON_SH[t.m]}</div>`;d=e+1}
+  }else{
+    let d=v0;
+    while(d<=v1){const t=ymd(d);const mEnd=dnFromYMD(t.y,t.m+1,1);const e=Math.min(mEnd-1,v1);const wpx=(e-d+1)*px;
+      h1+=`<div style="width:${wpx}px">${wpx>110?MON_FULL[t.m]+' '+t.y:wpx>40?MON_SH[t.m]+' '+t.y:''}</div>`;d=e+1}
+    const td=todayDn();
+    if(ui.zoom==='day'){
+      for(let d2=v0;d2<=v1;d2++){const nw=!isWork(d2);h2+=`<div class="${d2===td?'td':nw?'we':''}" style="width:${px}px">${ymd(d2).d}</div>`}
+    }else{
+      for(let d2=v0;d2<=v1;d2+=7){const e=Math.min(d2+6,v1);h2+=`<div class="${td>=d2&&td<=d2+6?'td':''}" style="width:${(e-d2+1)*px}px">${ymd(d2).d}</div>`}
+    }
+  }
+  $('gHead').style.width=W+'px';
+  $('gHead').innerHTML=`<div class="gh1">${h1}</div><div class="gh2">${h2}</div>`;
+  // korpus
+  const H=VIS.length*ROWH+40;
+  const gb=$('gBody');gb.style.width=W+'px';gb.style.height=H+'px';
+  let out='';
+  VIS.forEach((i,ri)=>{out+=`<div class="grow${ui.sel===tasks[i].uid?' sel':''}" data-i="${i}" style="top:${ri*ROWH}px"></div>`});
+  if(ui.zoom!=='month'){
+    for(let d=v0;d<=v1;d++)if(!isWork(d))out+=`<div class="nw" style="left:${(d-v0)*px}px;width:${px}px"></div>`;
+  }
+  const td=todayDn();
+  if(td>=v0&&td<=v1)out+=`<div class="today" style="left:${(td-v0)*px+px/2-1}px"></div>`;
+  const rowOf=new Map();VIS.forEach((i,ri)=>rowOf.set(i,ri));
+  VIS.forEach((i,ri)=>{
+    const r=R[i],t=tasks[i];const top=ri*ROWH;
+    const x=(r.sd-v0)*px;const w=Math.max((r.ed-r.sd+1)*px,4);
+    const crit=r.crit&&ui.crit;
+    const tip=esc(`${t.name||'(bez nazwy)'}\n${fmtD(r.sd)} – ${fmtD(r.ed)}\nCzas: ${r.dur} dni rob.\nUkończenie: ${r.pct}%\nZapas: ${r.float} dni rob.`);
+    let endX;
+    if(r.mile){
+      const cx=x+px/2;endX=cx+10;
+      out+=`<div class="ms${crit?' crit':''}" style="left:${cx-7}px;top:${top+7}px" title="${tip}"></div>`;
+    }else if(r.sum){
+      endX=x+w;
+      out+=`<div class="bar sum" style="left:${x}px;top:${top+9}px;width:${w}px" title="${tip}"><div class="pg" style="width:${r.pct}%"></div></div>`;
+    }else{
+      endX=x+w;
+      out+=`<div class="bar${crit?' crit':''}" style="left:${x}px;top:${top+6}px;width:${w}px" title="${tip}"><div class="pg" style="width:${r.pct}%"></div></div>`;
+    }
+    if(ui.base&&t.bs!==null&&t.bs!==undefined){
+      const bx=(t.bs-v0)*px,bw=Math.max((t.be-t.bs+1)*px,4);
+      out+=`<div class="bl" style="left:${bx}px;top:${top+ROWH-7}px;width:${bw}px" title="Plan bazowy: ${fmtD(t.bs)} – ${fmtD(t.be)}"></div>`;
+    }
+    const rs=parseRes(t.res).map(x=>x.name).join(', ');
+    if(rs)out+=`<div class="lbl" style="left:${endX+6}px;top:${top+6}px">${esc(rs)}</div>`;
+  });
+  // strzałki zależności
+  let svg='';
+  VIS.forEach(k=>{
+    const rk=R[k];if(rk.sum)return;
+    tasks[k].preds.forEach(p=>{
+      const j=tasks.findIndex(x=>x.uid===p.u);
+      if(j<0||!rowOf.has(j))return;
+      const rj=R[j];
+      const mid=r=>(r.sd-v0)*px+px/2;
+      const a=p.t[0]==='F'?(rj.mile?mid(rj)+7:(rj.ed-v0+1)*px):(rj.mile?mid(rj)-7:(rj.sd-v0)*px);
+      const b=p.t[1]==='S'?(rk.mile?mid(rk)-8:(rk.sd-v0)*px):(rk.mile?mid(rk)+8:(rk.ed-v0+1)*px);
+      const y1=rowOf.get(j)*ROWH+ROWH/2,y2=rowOf.get(k)*ROWH+ROWH/2;
+      const cr=ui.crit&&rj.crit&&rk.crit;
+      const col=cr?'#c00000':'#5b6b86';
+      let d;
+      const dir=p.t[1]==='S'?1:-1; // wejście z lewej (S) lub z prawej (F)
+      const bx=b-dir*6;
+      if(dir===1&&bx>=a+6)d=`M${a},${y1} H${(a+6)} V${y2} H${b}`;
+      else{const ym=y2>y1?y1+ROWH/2:y1-ROWH/2;const ax=a+(p.t[0]==='F'?6:-6);d=`M${a},${y1} H${ax} V${ym===y1?y1:ym} H${bx} V${y2} H${b}`}
+      svg+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.2" marker-end="url(#ar${cr?'r':'g'})"/>`;
+    });
+  });
+  out+=`<svg class="links" width="${W}" height="${H}"><defs>
+    <marker id="arg" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7z" fill="#5b6b86"/></marker>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7z" fill="#c00000"/></marker></defs>${svg}</svg>`;
+  gb.innerHTML=out;
+}
+
+/* =====================  ZASOBY  ===================== */
+function resourceLoad(){
+  let mn=Infinity,mx=-Infinity;R.forEach(r=>{if(r.sd<mn)mn=r.sd;if(r.ed>mx)mx=r.ed});
+  if(!R.length)return{weeks:[],rows:[]};
+  const w0=mondayOf(mn);const nw=Math.floor((mx-w0)/7)+1;
+  const weeks=[];for(let k=0;k<nw;k++){const s=w0+7*k;let cap=0;for(let d=s;d<s+7;d++)if(isWork(d))cap++;weeks.push({s,e:s+6,cap})}
+  const map=new Map();
+  tasks.forEach((t,i)=>{
+    const r=R[i];if(r.sum||r.mile||r.dur===0)return;
+    parseRes(t.res).forEach(x=>{
+      if(!map.has(x.name))map.set(x.name,{name:x.name,vals:Array(nw).fill(0),total:0});
+      const row=map.get(x.name);
+      for(let s=r.S;s<r.E;s++){const day=wdAt(s);const wi=Math.floor((day-w0)/7);if(wi>=0&&wi<nw){row.vals[wi]+=x.units;row.total+=x.units}}
+    });
+  });
+  return{weeks,rows:[...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'pl'))};
+}
+const r1=v=>Math.round(v*10)/10;
+function renderRes(){
+  const L=resourceLoad();const el=$('viewRes');
+  if(!L.rows.length){el.innerHTML='<div class="hint">Brak przypisanych zasobów. Wpisz osoby w kolumnie „Zasoby” (np. <code>Anna, Piotr[50%]</code>).</div>';return}
+  let h='<p style="margin-top:0;color:#6b7385">Dni robocze zarezerwowane w tygodniu (każde zadanie liczone na 100% czasu pracy, chyba że podano <code>[50%]</code>). <span style="background:#f4b183;padding:1px 6px">czerwone</span> = więcej niż dni robocze w tygodniu.</p>';
+  h+='<table class="rt"><tr><th class="nm">Zasób</th><th>Razem</th>'+L.weeks.map(w=>`<th title="Dni robocze w tygodniu: ${w.cap}">${fmtDM(w.s)}</th>`).join('')+'</tr>';
+  L.rows.forEach(r=>{
+    h+=`<tr><td class="nm">${esc(r.name)}</td><td><b>${r1(r.total)}</b></td>`+r.vals.map((v,k)=>`<td class="${v>L.weeks[k].cap+1e-9?'ov':v>0?'ok':''}">${v?r1(v):''}</td>`).join('')+'</tr>';
+  });
+  el.innerHTML=h+'</table>';
+}
+
+/* =====================  RENDER GŁÓWNY  ===================== */
+function renderStatus(){
+  const c=calcInfo;let s='';
+  if(c.cycle)s+='<span class="warn">⚠ Wykryto zależność cykliczną – popraw kolumnę „Poprzednicy”.</span>';
+  if(tasks.length){
+    s+=`<span>Start: <b>${fmtD(c.start)}</b></span><span>Koniec: <b>${fmtD(c.end)}</b></span>`+
+       `<span>Czas trwania: <b>${c.wdays}</b> dni rob.</span><span>Ukończenie: <b>${c.pct}%</b></span>`+
+       `<span>Zadań krytycznych: <b>${c.critN}</b></span><span>Zadań: <b>${tasks.length}</b></span>`;
+  }else s+='<span>Brak zadań</span>';
+  $('status').innerHTML=s;
+}
+let saveT=null;
+function autosave(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('harmonogram_v1',snap())}catch(e){}},400)}
+function recalcAndDraw(){calc();refreshComputed();renderGantt();renderStatus();if(ui.tab==='res')renderRes();updBtns();autosave()}
+function fullRender(){
+  $('pname').value=P.name;
+  calc();renderTable();renderGantt();renderStatus();if(ui.tab==='res')renderRes();updBtns();autosave();
+}
+function updBtns(){
+  $('bUndo').disabled=!undoS.length;$('bRedo').disabled=!redoS.length;
+  const i=selIdx();const has=i>=0;
+  ['bDel','bUp','bDown','bOut','bIn'].forEach(id=>$(id).disabled=!has);
+}
+const selIdx=()=>tasks.findIndex(t=>t.uid===ui.sel);
+
+/* =====================  EDYCJA KOMÓREK  ===================== */
+$('tBody').addEventListener('change',e=>{
+  const inp=e.target;const f=inp.dataset.f;if(!f)return;
+  const row=inp.closest('.row');const i=+row.dataset.i;const t=tasks[i];
+  inp.classList.remove('err');inp.title='';
+  const before=snap();
+  try{
+    switch(f){
+      case'name':t.name=inp.value;break;
+      case'dur':{const v=parseDur(inp.value);if(v===null)throw new Error('Podaj liczbę dni, np. 5, 5d lub 2w');t.dur=v;inp.value=v;
+        row.querySelector('[data-f=name]').placeholder=v===0?'Kamień milowy':'Nazwa zadania';break}
+      case'pred':{t.preds=parsePreds(inp.value,i);break}
+      case'res':t.res=inp.value;break;
+      case'pct':{let v=parseInt(String(inp.value).replace('%',''),10);if(isNaN(v))throw new Error('Podaj liczbę 0–100');t.pct=Math.min(100,Math.max(0,v));inp.value=t.pct;break}
+      case'snet':t.snet=inp.value;break;
+      case'notes':t.notes=inp.value;break;
+    }
+  }catch(err){inp.classList.add('err');inp.title=err.message;alert(err.message);return}
+  undoS.push(before);if(undoS.length>150)undoS.shift();redoS=[];
+  if(f==='pred')inp.value=predToStr(t);
+  if(f==='dur'||f==='name'){recalcAndDraw();if(f==='dur'){/* ◆ w nazwie */}}
+  else recalcAndDraw();
+});
+$('tBody').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.dataset.f){
+    const f=e.target.dataset.f;const row=e.target.closest('.row');const nx=row.nextElementSibling;
+    e.target.blur();
+    if(nx){const n=nx.querySelector(`[data-f="${f}"]`);if(n&&!n.disabled)setTimeout(()=>n.focus(),0)}
+    e.preventDefault();
+  }
+});
+$('tBody').addEventListener('focusin',e=>{
+  const row=e.target.closest('.row');if(!row)return;
+  if(e.target.tagName==='INPUT'&&e.target.type!=='date')setTimeout(()=>e.target.select&&e.target.select(),0);
+  setSel(tasks[+row.dataset.i].uid);
+});
+$('tBody').addEventListener('click',e=>{
+  const row=e.target.closest('.row');if(!row)return;
+  const i=+row.dataset.i;
+  if(e.target.dataset.tg){tasks[i].collapsed=!tasks[i].collapsed;calc();renderTable();renderGantt();autosave();return}
+  if(e.target.classList.contains('c-num')||e.target.classList.contains('ro'))setSel(tasks[i].uid);
+});
+function setSel(uid){
+  if(ui.sel===uid)return;ui.sel=uid;
+  document.querySelectorAll('.row,.grow').forEach(el=>{
+    const i=+el.dataset.i;el.classList.toggle('sel',tasks[i]&&tasks[i].uid===uid);
+  });
+  updBtns();
+}
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){e.preventDefault();undo()}
+  else if((e.ctrlKey||e.metaKey)&&(e.key.toLowerCase()==='y'||(e.shiftKey&&e.key.toLowerCase()==='z'))){e.preventDefault();redo()}
+  else if(e.key==='Delete'&&!/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||'')&&!$('dlgSet').open){delSel()}
+});
+
+/* =====================  OPERACJE NA WIERSZACH  ===================== */
+function addTask(mile){
+  pushUndo();
+  const i=selIdx();
+  const t=mkTask({dur:mile?0:1,name:''});
+  let at=tasks.length;
+  if(i>=0){t.level=tasks[i].level;at=lastDesc(i)+1;
+    // jeśli zaznaczony jest podsumowaniem — nowe wchodzi jako jego dziecko na końcu
+    if(isSum(i)){t.level=tasks[i].level+1;tasks[i].collapsed=false}
+  }
+  tasks.splice(at,0,t);ui.sel=t.uid;
+  fullRender();
+  const row=document.querySelector(`.row[data-i="${at}"]`);
+  if(row){row.scrollIntoView({block:'nearest'});row.querySelector('[data-f=name]').focus()}
+}
+function delSel(){
+  const i=selIdx();if(i<0)return;
+  const j=lastDesc(i);
+  if(j>i&&!confirm(`Usunąć zadanie „${tasks[i].name||'(bez nazwy)'}” wraz z ${j-i} podzadaniami?`))return;
+  pushUndo();
+  const rem=new Set(tasks.slice(i,j+1).map(t=>t.uid));
+  tasks.splice(i,j-i+1);
+  tasks.forEach(t=>t.preds=t.preds.filter(p=>!rem.has(p.u)));
+  ui.sel=tasks[Math.min(i,tasks.length-1)]?.uid||null;
+  fullRender();
+}
+function move(dir){
+  const i=selIdx();if(i<0)return;const j=lastDesc(i);const L=tasks[i].level;
+  if(dir<0){
+    let k=i-1;while(k>=0&&tasks[k].level>L)k--;
+    if(k<0||tasks[k].level<L)return;
+    pushUndo();const blk=tasks.splice(i,j-i+1);tasks.splice(k,0,...blk);
+  }else{
+    if(j+1>=tasks.length||tasks[j+1].level!==L)return;
+    const j2=lastDesc(j+1);
+    pushUndo();const blk=tasks.splice(i,j-i+1);tasks.splice(i+(j2-j),0,...blk);
+  }
+  fullRender();
+}
+function indent(d){
+  const i=selIdx();if(i<0)return;const j=lastDesc(i);
+  if(d>0){if(i===0||tasks[i].level>tasks[i-1].level)return}
+  else if(tasks[i].level===0)return;
+  pushUndo();for(let k=i;k<=j;k++)tasks[k].level+=d;fullRender();
+}
+$('bAdd').onclick=()=>addTask(false);
+$('bAddMs').onclick=()=>addTask(true);
+$('bDel').onclick=delSel;
+$('bUp').onclick=()=>move(-1);
+$('bDown').onclick=()=>move(1);
+$('bIn').onclick=()=>indent(1);
+$('bOut').onclick=()=>indent(-1);
+$('bUndo').onclick=undo;$('bRedo').onclick=redo;
+$('bBase').onclick=()=>{
+  if(!tasks.length)return;
+  if(tasks.some(t=>t.bs!==null&&t.bs!==undefined)&&!confirm('Nadpisać istniejący plan bazowy aktualnymi terminami?'))return;
+  pushUndo();tasks.forEach((t,i)=>{t.bs=R[i].sd;t.be=R[i].ed});recalcAndDraw();
+};
+$('bBaseClr').onclick=()=>{pushUndo();tasks.forEach(t=>{t.bs=null;t.be=null});recalcAndDraw()};
+$('pname').onchange=e=>{pushUndo();P.name=e.target.value;autosave()};
+$('zoom').onchange=e=>{ui.zoom=e.target.value;renderGantt()};
+$('chCrit').onchange=e=>{ui.crit=e.target.checked;refreshComputed();renderGantt()};
+$('chBase').onchange=e=>{ui.base=e.target.checked;renderGantt()};
+$('bToday').onclick=()=>{
+  const td=todayDn();$('right').scrollLeft=Math.max(0,(td-gView.v0)*gView.px-200);
+};
+
+/* =====================  PLIKI  ===================== */
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+const safeName=s=>(s||'projekt').replace(/[\\/:*?"<>|]+/g,'_').trim().slice(0,80)||'projekt';
+$('bSave').onclick=()=>{
+  download(new Blob([JSON.stringify({app:'harmonogram',version:1,P,tasks},null,1)],{type:'application/json'}),safeName(P.name)+'.harmonogram.json');
+};
+$('bOpen').onclick=()=>$('fileIn').click();
+$('fileIn').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const o=JSON.parse(rd.result);
+      if(!o.P||!Array.isArray(o.tasks))throw new Error('To nie jest plik projektu harmonogramu.');
+      pushUndo();P=Object.assign({name:'Projekt',start:'',polish:true,custom:'',workdays:[1,2,3,4,5]},o.P);
+      tasks=o.tasks.map(t=>mkTask(t));ui.sel=null;fullRender();
+    }catch(err){alert('Nie udało się otworzyć pliku: '+err.message)}
+  };
+  rd.readAsText(f,'utf-8');e.target.value='';
+};
+$('bNew').onclick=()=>{
+  if(tasks.length&&!confirm('Rozpocząć nowy projekt? Niezapisane zmiany zostaną utracone (można je cofnąć Ctrl+Z).'))return;
+  pushUndo();P={name:'Nowy projekt',start:dnToIso(nextMonday()),polish:true,custom:'',workdays:[1,2,3,4,5]};tasks=[];ui.sel=null;fullRender();
+};
+$('bSample').onclick=()=>{
+  if(tasks.length&&!confirm('Zastąpić bieżący projekt przykładowym?'))return;
+  pushUndo();loadSample();
+};
+function loadSample(){
+  P={name:'Wdrożenie systemu – przykład',start:dnToIso(nextMonday()),polish:true,custom:'',workdays:[1,2,3,4,5]};
+  const T=(name,dur,level,res,pct)=>mkTask({name,dur,level,res:res||'',pct:pct||0});
+  tasks=[
+    T('Faza 1: Analiza',0,0),
+    T('Zebranie wymagań',5,1,'Anna',100),
+    T('Analiza i specyfikacja',7,1,'Anna, Piotr',60),
+    T('Akceptacja specyfikacji',0,1),
+    T('Faza 2: Realizacja',0,0),
+    T('Projekt techniczny',8,1,'Piotr'),
+    T('Wykonanie modułów',15,1,'Piotr, Marek'),
+    T('Przygotowanie środowiska',5,1,'Marek'),
+    T('Testy',10,1,'Ewa'),
+    T('Gotowość do wdrożenia',0,1),
+    T('Faza 3: Wdrożenie',0,0),
+    T('Szkolenia użytkowników',4,1,'Ewa'),
+    T('Uruchomienie produkcyjne',2,1,'Marek, Piotr[50%]'),
+    T('Zakończenie projektu',0,1)];
+  const link=(k,list)=>{tasks[k-1].preds=list.map(x=>{const [r,t='FS',l=0]=Array.isArray(x)?x:[x];return{u:tasks[r-1].uid,t,l}})};
+  link(3,[2]);link(4,[3]);link(6,[4]);link(7,[6]);link(8,[4]);link(9,[7,8]);link(10,[9]);link(12,[10]);link(13,[10,[12,'FS',1]]);link(14,[12,13]);
+  tasks[7].snet=dnToIso(nextMonday()+7*3);
+  ui.sel=null;fullRender();
+}
+
+/* =====================  USTAWIENIA  ===================== */
+const DAYN=[[1,'Pn'],[2,'Wt'],[3,'Śr'],[4,'Cz'],[5,'Pt'],[6,'So'],[0,'Nd']];
+$('sDays').innerHTML=DAYN.map(([v,n])=>`<label><input type="checkbox" value="${v}"> ${n}</label>`).join('');
+$('bSet').onclick=()=>{
+  $('sStart').value=P.start;$('sPl').checked=!!P.polish;$('sCust').value=P.custom||'';
+  $('sDays').querySelectorAll('input').forEach(c=>c.checked=P.workdays.includes(+c.value));
+  $('dlgSet').showModal();
+};
+$('sCancel').onclick=()=>$('dlgSet').close();
+$('fSet').onsubmit=e=>{
+  const days=[...$('sDays').querySelectorAll('input')].filter(c=>c.checked).map(c=>+c.value);
+  if(!days.length){e.preventDefault();alert('Zaznacz co najmniej jeden dzień roboczy.');return}
+  if(!isoToDn($('sStart').value)){e.preventDefault();alert('Podaj poprawną datę rozpoczęcia.');return}
+  pushUndo();
+  P.start=$('sStart').value;P.polish=$('sPl').checked;P.custom=$('sCust').value;P.workdays=days;
+  setTimeout(fullRender,0);
+};
+
+/* =====================  UKŁAD: PODZIAŁ, SCROLL, ZAKŁADKI  ===================== */
+$('right').addEventListener('scroll',()=>{$('tBody').scrollTop=$('right').scrollTop});
+$('tBody').addEventListener('wheel',e=>{if(!e.shiftKey){$('right').scrollTop+=e.deltaY;e.preventDefault()}},{passive:false});
+(()=>{
+  const sp=$('split'),lf=$('left');let drag=false;
+  sp.addEventListener('mousedown',e=>{drag=true;document.body.style.userSelect='none';e.preventDefault()});
+  window.addEventListener('mousemove',e=>{if(!drag)return;const r=$('viewGantt').getBoundingClientRect();lf.style.width=Math.max(260,Math.min(e.clientX-r.left,r.width-220))+'px'});
+  window.addEventListener('mouseup',()=>{drag=false;document.body.style.userSelect=''});
+})();
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  ui.tab=t.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  $('viewGantt').hidden=ui.tab!=='gantt';$('viewRes').hidden=ui.tab!=='res';$('viewHelp').hidden=ui.tab!=='help';
+  if(ui.tab==='res')renderRes();
+});
+$('viewGantt').style.display='flex';
+
+/* =====================  EKSPORT DO EXCELA (.xlsx)  ===================== */
+const xmlEsc=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const colL=c=>{let s='';c++;while(c>0){const m=(c-1)%26;s=String.fromCharCode(65+m)+s;c=Math.floor((c-1)/26)}return s};
+const xl=dn=>dn+25569; // numer seryjny Excela
+
+class Wb{
+  constructor(){
+    this.fonts=[];this.fills=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>'];
+    this.borders=['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+    this.nfs=[];this.xfs=[];this.xc=new Map();this.sheets=[];this.names=[];
+    this.st({});
+  }
+  idx(arr,x){let i=arr.indexOf(x);if(i<0){arr.push(x);i=arr.length-1}return i}
+  st(s){
+    const key=JSON.stringify(s);if(this.xc.has(key))return this.xc.get(key);
+    const font=`<font>${s.b?'<b/>':''}${s.i?'<i/>':''}<sz val="${s.sz||10}"/><color rgb="FF${s.color||'000000'}"/><name val="Calibri"/><family val="2"/></font>`;
+    const fo=this.idx(this.fonts,font);
+    const fi=s.fill?this.idx(this.fills,`<fill><patternFill patternType="solid"><fgColor rgb="FF${s.fill}"/><bgColor indexed="64"/></patternFill></fill>`):0;
+    let bo=0;
+    if(s.border){const c=`<color rgb="FF${s.bc||'D0D0D0'}"/>`;
+      bo=this.idx(this.borders,`<border><left style="thin">${c}</left><right style="thin">${c}</right><top style="thin">${c}</top><bottom style="thin">${c}</bottom><diagonal/></border>`)}
+    let nf=0;
+    if(s.nf){const B={'0':1,'0%':9};if(B[s.nf]!==undefined)nf=B[s.nf];else{const k=this.idx(this.nfs,s.nf);nf=164+k}}
+    const al=`<alignment horizontal="${s.h||'general'}" vertical="${s.v||'center'}"${s.wrap?' wrapText="1"':''}${s.ind?` indent="${s.ind}"`:''}${s.rot?` textRotation="${s.rot}"`:''}/>`;
+    const xf=`<xf numFmtId="${nf}" fontId="${fo}" fillId="${fi}" borderId="${bo}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">${al}</xf>`;
+    this.xfs.push(xf);const id=this.xfs.length-1;this.xc.set(key,id);return id;
+  }
+  sheet(name){const s=new Sheet(this,name);this.sheets.push(s);return s}
+  stylesXml(){
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`+
+    (this.nfs.length?`<numFmts count="${this.nfs.length}">${this.nfs.map((f,i)=>`<numFmt numFmtId="${164+i}" formatCode="${xmlEsc(f)}"/>`).join('')}</numFmts>`:'')+
+    `<fonts count="${this.fonts.length}">${this.fonts.join('')}</fonts><fills count="${this.fills.length}">${this.fills.join('')}</fills><borders count="${this.borders.length}">${this.borders.join('')}</borders>`+
+    `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${this.xfs.length}">${this.xfs.join('')}</cellXfs>`+
+    `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  }
+  async build(){
+    const enc=new TextEncoder();const files=[];
+    const add=(n,x)=>files.push([n,enc.encode(x)]);
+    add('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${this.sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
+    add('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+    const dn=[];
+    this.sheets.forEach((s,i)=>{
+      if(s.filter)dn.push(`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">${xmlEsc(`'${s.name}'!${s.filter.abs}`)}</definedName>`);
+      if(s.titles)dn.push(`<definedName name="_xlnm.Print_Titles" localSheetId="${i}">${xmlEsc(s.titles)}</definedName>`);
+    });
+    add('xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${this.sheets.map((s,i)=>`<sheet name="${xmlEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${dn.length?`<definedNames>${dn.join('')}</definedNames>`:''}</workbook>`);
+    add('xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${this.sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${this.sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+    this.sheets.forEach((s,i)=>add(`xl/worksheets/sheet${i+1}.xml`,s.xml(i===0)));
+    add('xl/styles.xml',this.stylesXml());
+    return zipFiles(files);
+  }
+}
+class Sheet{
+  constructor(wb,name){this.wb=wb;this.name=name;this.cells=new Map();this.cols=[];this.merges=[];this.rowH=new Map();this.rowOl=new Map();
+    this.freeze=null;this.filter=null;this.tab=null;this.paper=9;this.titles=null;this.maxOl=0}
+  set(r,c,v,s){let row=this.cells.get(r);if(!row){row=new Map();this.cells.set(r,row)}row.set(c,{v,s:this.wb.st(s||{})})}
+  merge(r1,c1,r2,c2){if(r1===r2&&c1===c2)return;this.merges.push(`${colL(c1)}${r1+1}:${colL(c2)}${r2+1}`)}
+  width(c,w){this.cols[c]=w}
+  xml(first){
+    let maxR=0,maxC=0;
+    const rowsKeys=new Set([...this.cells.keys(),...this.rowH.keys()]);
+    const rk=[...rowsKeys].sort((a,b)=>a-b);
+    let sd='';
+    for(const r of rk){
+      const row=this.cells.get(r)||new Map();
+      const ht=this.rowH.get(r),ol=this.rowOl.get(r);
+      sd+=`<row r="${r+1}"${ht?` ht="${ht}" customHeight="1"`:''}${ol?` outlineLevel="${ol}"`:''}>`;
+      for(const c of [...row.keys()].sort((a,b)=>a-b)){
+        const {v,s}=row.get(c);const ref=colL(c)+(r+1);
+        if(r>maxR)maxR=r;if(c>maxC)maxC=c;
+        if(v===null||v===undefined||v==='')sd+=`<c r="${ref}" s="${s}"/>`;
+        else if(typeof v==='number')sd+=`<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+        else sd+=`<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+      }
+      sd+='</row>';
+    }
+    const colsXml=this.cols.map((w,c)=>w?`<col min="${c+1}" max="${c+1}" width="${w}" customWidth="1"/>`:'').join('');
+    let pane='';
+    if(this.freeze){
+      const [fr,fc]=this.freeze;const tl=colL(fc)+(fr+1);
+      const ap=fr&&fc?'bottomRight':fr?'bottomLeft':'topRight';
+      pane=`<pane${fc?` xSplit="${fc}"`:''}${fr?` ySplit="${fr}"`:''} topLeftCell="${tl}" activePane="${ap}" state="frozen"/><selection pane="${ap}"/>`;
+    }
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`+
+      `<sheetPr>${this.tab?`<tabColor rgb="FF${this.tab}"/>`:''}<outlinePr summaryBelow="0"/><pageSetUpPr fitToPage="1"/></sheetPr>`+
+      `<dimension ref="A1:${colL(maxC)}${maxR+1}"/>`+
+      `<sheetViews><sheetView workbookViewId="0" showGridLines="0"${first?' tabSelected="1"':''}>${pane}</sheetView></sheetViews>`+
+      `<sheetFormatPr defaultRowHeight="15"${this.maxOl?` outlineLevelRow="${this.maxOl}"`:''}/>`+
+      (colsXml?`<cols>${colsXml}</cols>`:'')+`<sheetData>${sd}</sheetData>`+
+      (this.filter?`<autoFilter ref="${this.filter.ref}"/>`:'')+
+      (this.merges.length?`<mergeCells count="${this.merges.length}">${this.merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`:'')+
+      `<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>`+
+      `<pageSetup paperSize="${this.paper}" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  }
+}
+/* ZIP */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC_T[(c^u8[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+async function deflateRaw(u8){
+  if(typeof CompressionStream==='undefined')return null;
+  try{const cs=new CompressionStream('deflate-raw');const st=new Blob([u8]).stream().pipeThrough(cs);return new Uint8Array(await new Response(st).arrayBuffer())}catch(e){return null}
+}
+async function zipFiles(files){
+  const enc=new TextEncoder();const parts=[];const central=[];let off=0;
+  const now=new Date();
+  const dtime=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1);
+  const ddate=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  for(const [name,data] of files){
+    const nb=enc.encode(name);const crc=crc32(data);
+    let comp=await deflateRaw(data);let method=8;
+    if(!comp||comp.length>=data.length){comp=data;method=0}
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x0800,true);lh.setUint16(8,method,true);
+    lh.setUint16(10,dtime,true);lh.setUint16(12,ddate,true);lh.setUint32(14,crc,true);lh.setUint32(18,comp.length,true);lh.setUint32(22,data.length,true);
+    lh.setUint16(26,nb.length,true);lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer),nb,comp);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);ch.setUint16(10,method,true);
+    ch.setUint16(12,dtime,true);ch.setUint16(14,ddate,true);ch.setUint32(16,crc,true);ch.setUint32(20,comp.length,true);ch.setUint32(24,data.length,true);
+    ch.setUint16(28,nb.length,true);ch.setUint32(42,off,true);
+    central.push(new Uint8Array(ch.buffer),nb);
+    off+=30+nb.length+comp.length;
+  }
+  let cdSize=0;central.forEach(x=>cdSize+=x.length);
+  const eo=new DataView(new ArrayBuffer(22));
+  eo.setUint32(0,0x06054b50,true);eo.setUint16(8,files.length,true);eo.setUint16(10,files.length,true);eo.setUint32(12,cdSize,true);eo.setUint32(16,off,true);
+  return new Blob([...parts,...central,new Uint8Array(eo.buffer)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+
+/* --- Budowa skoroszytu --- */
+const NAVY='1F3864';
+async function buildXlsx(){
+  calc();
+  const wb=new Wb();const td=todayDn();
+  const n=tasks.length;
+  const typeOf=r=>r.sum?'Podsumowanie':r.mile?'Kamień milowy':'Zadanie';
+  const H={b:1,color:'FFFFFF',fill:NAVY,h:'center',wrap:1,border:1,bc:'8EA3C4',sz:10};
+  const bc='D9D9D9';
+  const title=P.name||'Harmonogram projektu';
+  const stamp=`Wygenerowano: ${fmtD(td)}`;
+  const projInfo=n?`Termin: ${fmtD(calcInfo.start)} – ${fmtD(calcInfo.end)}   |   Czas trwania: ${calcInfo.wdays} dni rob.   |   Ukończenie: ${calcInfo.pct}%   |   ${stamp}`:stamp;
+
+  /* ===== Arkusz 1: Gantt ===== */
+  const g=wb.sheet('Gantt');g.tab='2F6EB5';g.paper=8;
+  let mn=Infinity,mx=-Infinity;R.forEach(r=>{if(r.sd<mn)mn=r.sd;if(r.ed>mx)mx=r.ed});
+  if(!n){mn=isoToDn(P.start);mx=mn+30}
+  const span=mx-mn;
+  const mode=span<=120?'day':span<=900?'week':'month';
+  const periods=[];
+  if(mode==='day'){for(let d=mn;d<=mx;d++)periods.push({s:d,e:d})}
+  else if(mode==='week'){for(let d=mondayOf(mn);d<=mx;d+=7)periods.push({s:d,e:d+6})}
+  else{let t=ymd(mn);let y=t.y,m=t.m;while(dnFromYMD(y,m,1)<=mx){periods.push({s:dnFromYMD(y,m,1),e:dnFromYMD(y,m+1,1)-1});m++;if(m>11){m=0;y++}}}
+  const TC=6,HR=3; // kolumny tabeli; wiersz nagłówka (0-based)
+  const gw={day:2.6,week:3.3,month:7}[mode];
+  g.width(0,5);g.width(1,44);g.width(2,8);g.width(3,11);g.width(4,11);g.width(5,8);
+  periods.forEach((p,k)=>g.width(TC+k,gw));
+  g.set(0,0,title,{b:1,sz:18,color:NAVY});g.rowH.set(0,28);
+  g.set(1,0,projInfo,{sz:10,color:'595959'});
+  // legenda
+  const lg=[['Zadanie',{fill:'A6C8EC'}],['Ukończone',{fill:'2F6EB5',color:'FFFFFF'}],['Krytyczne',{fill:'F4B6B6'}],['Krytyczne ukończone',{fill:'C00000',color:'FFFFFF'}],['Podsumowanie',{fill:'404040',color:'FFFFFF'}],['◆ Kamień milowy',{color:'7030A0',b:1}],['Dziś',{fill:'FFC000'}]];
+  const lw=mode==='day'?9:mode==='week'?6:3;
+  lg.forEach(([t,s],k)=>{const c0=TC+k*lw;if(c0+lw-1>=TC+periods.length)return;g.set(2,c0,t,{sz:8,h:'center',border:1,bc,...s});for(let c=1;c<lw;c++)g.set(2,c0+c,null,{border:1,bc,...s});g.merge(2,c0,2,c0+lw-1)});
+  // nagłówek tabeli
+  ['Lp.','Nazwa zadania','Czas (dni rob.)','Start','Koniec','% ukoń.'].forEach((h,c)=>{g.set(HR,c,h,H);g.set(HR+1,c,null,H);g.merge(HR,c,HR+1,c)});
+  g.rowH.set(HR,18);g.rowH.set(HR+1,mode==='week'?36:20);
+  // nagłówek osi czasu
+  const hdrTop=(k,label)=>g.set(HR,TC+k,label,{...H,sz:9});
+  if(mode==='month'){
+    let k=0;while(k<periods.length){const y=ymd(periods[k].s).y;let k2=k;while(k2+1<periods.length&&ymd(periods[k2+1].s).y===y)k2++;
+      hdrTop(k,String(y));for(let c=k+1;c<=k2;c++)hdrTop(c,null);g.merge(HR,TC+k,HR,TC+k2);k=k2+1}
+    periods.forEach((p,k)=>g.set(HR+1,TC+k,MON_SH[ymd(p.s).m],{...H,sz:8}));
+  }else{
+    let k=0;while(k<periods.length){const t=ymd(periods[k].s);let k2=k;while(k2+1<periods.length&&ymd(periods[k2+1].s).m===t.m&&ymd(periods[k2+1].s).y===t.y)k2++;
+      const lab=(k2-k+1)*(mode==='day'?1:7)>=(mode==='day'?5:14)?`${MON_FULL[t.m]} ${t.y}`:(k2-k+1)*(mode==='day'?1:7)>=3?MON_SH[t.m]:'';
+      hdrTop(k,lab);for(let c=k+1;c<=k2;c++)hdrTop(c,null);g.merge(HR,TC+k,HR,TC+k2);k=k2+1}
+    periods.forEach((p,k)=>{
+      const isTd=td>=p.s&&td<=p.e;const nw=mode==='day'&&!isWork(p.s);
+      const sty={...H,sz:8,fill:isTd?'FFC000':nw?'7F8FA9':NAVY,color:isTd?'000000':'FFFFFF'};
+      if(mode==='day')g.set(HR+1,TC+k,ymd(p.s).d,sty);
+      else g.set(HR+1,TC+k,fmtDM(p.s),{...sty,rot:90});
+    });
+  }
+  // wiersze zadań
+  const doneEnd=r=>{if(r.pct>=100)return r.ed;if(r.pct<=0)return-1e9;const k=Math.round((r.E-r.S)*r.pct/100);return k>0?wdAt(r.S+k-1):-1e9};
+  tasks.forEach((t,i)=>{
+    const r=R[i],row=HR+2+i;
+    const sumF=r.sum?'E7EEF7':null;
+    const base={sz:10,border:1,bc,b:r.sum?1:0,fill:sumF||undefined};
+    g.set(row,0,i+1,{...base,h:'center',color:'7F7F7F'});
+    g.set(row,1,t.name||'',{...base,ind:Math.min(t.level*2,14),color:r.crit&&!r.sum?'C00000':'000000'});
+    g.set(row,2,r.sum?r.dur:t.dur,{...base,h:'center'});
+    g.set(row,3,xl(r.sd),{...base,h:'center',nf:'dd.mm.yyyy'});
+    g.set(row,4,xl(r.ed),{...base,h:'center',nf:'dd.mm.yyyy'});
+    g.set(row,5,r.pct/100,{...base,h:'center',nf:'0%'});
+    const de=doneEnd(r);
+    periods.forEach((p,k)=>{
+      const ov=p.s<=r.ed&&p.e>=r.sd;
+      const nw=mode==='day'&&!isWork(p.s);
+      const isTd=td>=p.s&&td<=p.e;
+      let s={border:1,bc:'E6E6E6',sz:9,h:'center'};
+      if(nw)s.fill='F2F2F2';
+      if(isTd&&!ov)s.fill='FFF2CC';
+      let v=null;
+      if(r.mile){if(r.sd>=p.s&&r.sd<=p.e){v='◆';s.color=r.crit?'C00000':'7030A0';s.b=1;s.sz=11}}
+      else if(ov){
+        if(r.sum)s.fill='404040';
+        else{const done=((p.s+p.e)/2)<=de||r.pct>=100;
+          s.fill=r.crit?(done?'C00000':'F4B6B6'):(done?'2F6EB5':'A6C8EC')}
+      }
+      g.set(row,TC+k,v,s);
+    });
+    if(t.level>0){g.rowOl.set(row,Math.min(t.level,7));g.maxOl=Math.max(g.maxOl,Math.min(t.level,7))}
+  });
+  g.freeze=[HR+2,TC];
+  g.titles=`'Gantt'!$A:$F,'Gantt'!$${HR+1}:$${HR+2}`;
+
+  /* ===== Arkusz 2: Lista zadań ===== */
+  const L=wb.sheet('Lista zadań');L.tab='1E7A3C';
+  const hd=['Lp.','WBS','Nazwa zadania','Typ','Czas (dni rob.)','Start','Koniec','% ukończenia','Poprzednicy','Zasoby','Zapas (dni rob.)','Krytyczne','Nie wcześniej niż','Start bazowy','Koniec bazowy','Odchylenie końca (dni kal.)','Uwagi'];
+  const lw2=[5,8,46,15,10,12,12,11,14,24,10,10,14,12,12,14,40];
+  hd.forEach((h,c)=>{L.set(0,c,h,H);L.width(c,lw2[c])});L.rowH.set(0,34);
+  tasks.forEach((t,i)=>{
+    const r=R[i],row=i+1;
+    const b={sz:10,border:1,bc,b:r.sum?1:0,fill:r.sum?'E7EEF7':undefined};
+    const hc={...b,h:'center'};
+    L.set(row,0,i+1,hc);L.set(row,1,r.wbs,hc);
+    L.set(row,2,t.name||'',{...b,ind:Math.min(t.level*2,14)});
+    L.set(row,3,typeOf(r),hc);
+    L.set(row,4,r.sum?r.dur:t.dur,hc);
+    L.set(row,5,xl(r.sd),{...hc,nf:'dd.mm.yyyy'});L.set(row,6,xl(r.ed),{...hc,nf:'dd.mm.yyyy'});
+    L.set(row,7,r.pct/100,{...hc,nf:'0%'});
+    L.set(row,8,predToStr(t),hc);L.set(row,9,r.sum?'':t.res,b);
+    L.set(row,10,r.float,hc);
+    L.set(row,11,r.crit&&!r.sum?'TAK':'',{...hc,color:'C00000',b:1});
+    const sn=isoToDn(t.snet);L.set(row,12,sn!==null&&!r.sum?xl(sn):null,{...hc,nf:'dd.mm.yyyy'});
+    const hasB=t.bs!==null&&t.bs!==undefined;
+    L.set(row,13,hasB?xl(t.bs):null,{...hc,nf:'dd.mm.yyyy'});L.set(row,14,hasB?xl(t.be):null,{...hc,nf:'dd.mm.yyyy'});
+    const dev=hasB?r.ed-t.be:null;
+    L.set(row,15,dev,{...hc,color:dev>0?'C00000':dev<0?'1E7A3C':'000000',b:dev?1:0});
+    L.set(row,16,t.notes||'',{...b,wrap:1});
+  });
+  L.freeze=[1,3];
+  L.filter={ref:`A1:${colL(hd.length-1)}${n+1}`,abs:`$A$1:$${colL(hd.length-1)}$${n+1}`};
+  L.titles=`'Lista zadań'!$1:$1`;
+
+  /* ===== Arkusz 3: Kamienie milowe ===== */
+  const M=wb.sheet('Kamienie milowe');M.tab='7030A0';
+  const mh=['Lp.','Kamień milowy','Data','Dni do terminu','Status','Data bazowa','Odchylenie (dni kal.)'];
+  const mw=[6,48,13,14,18,13,16];
+  mh.forEach((h,c)=>{M.set(0,c,h,H);M.width(c,mw[c])});M.rowH.set(0,30);
+  let mr=1;
+  tasks.forEach((t,i)=>{
+    const r=R[i];if(!r.mile)return;
+    const b={sz:10,border:1,bc},hc={...b,h:'center'};
+    const left=r.sd-td;
+    let status,fill,col='000000';
+    if(r.pct>=100){status='Zrealizowany';fill='C6EFCE';col='006100'}
+    else if(left<0){status='Po terminie';fill='FFC7CE';col='9C0006'}
+    else if(left<=14){status='Zbliża się (≤14 dni)';fill='FFEB9C';col='7F6000'}
+    else{status='Planowany';fill='DDEBF7'}
+    M.set(mr,0,i+1,hc);M.set(mr,1,t.name||'',{...b,ind:Math.min(t.level*2,14)});
+    M.set(mr,2,xl(r.sd),{...hc,nf:'dd.mm.yyyy',b:1});
+    M.set(mr,3,r.pct>=100?null:left,hc);
+    M.set(mr,4,status,{...hc,fill,color:col,b:1});
+    const hasB=t.bs!==null&&t.bs!==undefined;
+    M.set(mr,5,hasB?xl(t.be):null,{...hc,nf:'dd.mm.yyyy'});
+    const dev=hasB?r.ed-t.be:null;
+    M.set(mr,6,dev,{...hc,color:dev>0?'C00000':dev<0?'1E7A3C':'000000',b:dev?1:0});
+    mr++;
+  });
+  if(mr===1)M.set(1,1,'Brak kamieni milowych w projekcie (kamień milowy = zadanie o czasie 0).',{i:1,color:'7F7F7F'});
+  M.freeze=[1,0];
+
+  /* ===== Arkusz 4: Obciążenie zasobów ===== */
+  const Z=wb.sheet('Obciążenie zasobów');Z.tab='ED7D31';
+  const LD=resourceLoad();
+  Z.set(0,0,'Dni robocze zarezerwowane w tygodniu (zadanie liczone na 100% czasu pracy, chyba że podano [50%]). Czerwone pole = przeciążenie (więcej niż dni roboczych w tygodniu).',{i:1,color:'595959',sz:9});
+  Z.set(1,0,'Zasób',H);Z.set(1,1,'Razem (dni)',H);Z.width(0,28);Z.width(1,11);Z.rowH.set(1,42);
+  LD.weeks.forEach((w,k)=>{Z.set(1,2+k,fmtDM(w.s),{...H,rot:90,sz:9});Z.width(2+k,4.6)});
+  if(!LD.rows.length)Z.set(2,0,'Brak przypisanych zasobów.',{i:1,color:'7F7F7F'});
+  LD.rows.forEach((r,ri)=>{
+    const row=2+ri;
+    Z.set(row,0,r.name,{sz:10,b:1,border:1,bc});Z.set(row,1,r1(r.total),{sz:10,b:1,border:1,bc,h:'center'});
+    r.vals.forEach((v,k)=>{
+      const over=v>LD.weeks[k].cap+1e-9;
+      Z.set(row,2+k,v?r1(v):null,{sz:9,border:1,bc:'E6E6E6',h:'center',fill:over?'F4B183':v>0?'DDEBF7':undefined,b:over?1:0,nf:'0.#'});
+    });
+  });
+  Z.freeze=[2,2];
+
+  return wb.build();
+}
+$('bXlsx').onclick=async()=>{
+  if(!tasks.length){alert('Dodaj najpierw zadania do harmonogramu.');return}
+  const btn=$('bXlsx');btn.disabled=true;
+  try{
+    const blob=await buildXlsx();
+    const d=ymd(todayDn());
+    download(blob,`${safeName(P.name)}_harmonogram_${d.y}${pad(d.m+1)}${pad(d.d)}.xlsx`);
+  }catch(err){console.error(err);alert('Błąd eksportu: '+err.message)}
+  btn.disabled=false;
+};
+
+/* =====================  START  ===================== */
+(function init(){
+  let loaded=false;
+  try{
+    const s=localStorage.getItem('harmonogram_v1');
+    if(s){const o=JSON.parse(s);if(o.P&&Array.isArray(o.tasks)&&o.tasks.length){P=o.P;tasks=o.tasks.map(t=>mkTask(t));loaded=true}}
+  }catch(e){}
+  if(loaded)fullRender();else loadSample();
+  window.__app={buildXlsx,get tasks(){return tasks},get R(){return R},calc,get P(){return P}};
+})();
+</script>
+</body>
+</html>
