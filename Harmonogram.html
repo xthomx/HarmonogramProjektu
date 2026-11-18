@@ -162,7 +162,7 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
   <ul>
     <li>Wpisuj nazwy zadań i <b>czas w dniach roboczych</b>. Daty początku i końca liczą się same na podstawie zależności i kalendarza (weekendy i polskie święta są pomijane).</li>
     <li><b>Czas 0</b> oznacza kamień milowy (◆). Wcięcie (<code>⇥</code>) robi z zadania podzadanie – wiersz nadrzędny staje się podsumowaniem i sam liczy daty oraz postęp.</li>
-    <li><b>Na wykresie</b> przeciągnij słupek, aby przesunąć zadanie (ustawia „Nie wcześniej niż”), albo chwyć jego lewą/prawą krawędź, aby zmienić początek lub czas trwania. Esc anuluje przeciąganie, Ctrl+Z cofa zmianę. Jeśli zadanie ma poprzedników, nie wejdzie przed nich – zmień wtedy powiązanie.</li>
+    <li><b>Na wykresie</b> przeciągnij słupek, aby przesunąć zadanie (ustawia „Nie wcześniej niż”), albo chwyć jego lewą/prawą krawędź, aby zmienić początek lub czas trwania. Esc anuluje przeciąganie, Ctrl+Z cofa zmianę. Jeśli zadanie ma poprzedników, program sam koryguje opóźnienia w kolumnie „Poprzednicy” o przesunięcie w dniach roboczych (np. <code>3</code> → <code>3+2</code> po przesunięciu o 2 dni w prawo, <code>3-1</code> po przesunięciu o dzień w lewo). Zadanie bez poprzedników dostaje ustawienie „Nie wcześniej niż”.</li>
     <li>Kliknij numer wiersza lub dowolną komórkę, aby zaznaczyć zadanie, a potem użyj przycisków na pasku (dodaj, usuń, przesuń, wcięcie).</li>
   </ul>
   <h3>Poprzednicy</h3>
@@ -869,10 +869,26 @@ $('fSet').onsubmit=e=>{
     if(!d)return;const s=d;d=null;
     tip.style.display='none';document.body.style.userSelect='';s.el.classList.remove('drag');
     if(commit&&s.dd!==0){
-      const c=calcDrag(s.i,s.mode,s.dd),t=tasks[s.i];
+      const c=calcDrag(s.i,s.mode,s.dd),t=tasks[s.i],r=R[s.i];
       pushUndo();
-      if(c.snet!==undefined)t.snet=dnToIso(c.snet);
-      t.dur=c.dur;
+      const hasP=t.preds.length>0;
+      if(s.mode==='m'||r.mile){
+        // przesunięcie: poprawiamy opóźnienia wszystkich powiązań o różnicę w dniach roboczych
+        const k=lb(c.snet),newS=r.mile?(wdAt(k)===c.snet?k+1:k):k,delta=newS-r.S;
+        if(hasP){t.preds.forEach(p=>p.l+=delta);if(t.snet)t.snet=dnToIso(c.snet)}
+        else t.snet=dnToIso(c.snet);
+      }else if(s.mode==='l'){
+        // zmiana początku przy stałym końcu: opóźnienie zmienia się tylko dla powiązań z początkiem (ZR, RR)
+        const delta=lb(c.snet)-r.S;
+        if(hasP){t.preds.forEach(p=>{if(p.t==='FS'||p.t==='SS')p.l+=delta});if(t.snet)t.snet=dnToIso(c.snet)}
+        else t.snet=dnToIso(c.snet);
+        t.dur=c.dur;
+      }else{
+        // zmiana czasu trwania przy stałym początku: powiązania z końcem (ZZ, RZ) przesuwają opóźnienie
+        const dD=c.dur-t.dur;
+        t.preds.forEach(p=>{if(p.t==='FF'||p.t==='SF')p.l+=dD});
+        t.dur=c.dur;
+      }
       fullRender();
     }else{s.el.style.left=s.l0;if(s.w0)s.el.style.width=s.w0}
   }
