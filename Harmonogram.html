@@ -66,6 +66,9 @@ header.top h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
 .nw{position:absolute;top:0;bottom:0;background:rgba(120,130,150,.08)}
 .today{position:absolute;top:0;bottom:0;width:2px;background:#ff8c00;opacity:.8;z-index:1}
 .bar{position:absolute;height:16px;border-radius:3px;background:var(--lblue);border:1px solid #7ea6d6;overflow:hidden;z-index:2}
+.bar:not(.sum),.ms{cursor:grab}
+.bar.drag,.ms.drag{opacity:.75;box-shadow:0 0 0 2px #ffc000;z-index:5}
+#dragTip{position:fixed;z-index:50;background:#1d2433;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;pointer-events:none;white-space:nowrap;display:none}
 .bar .pg{height:100%;background:var(--blue)}
 .bar.crit{background:var(--lred);border-color:#d98b8b}
 .bar.crit .pg{background:var(--red)}
@@ -159,6 +162,7 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
   <ul>
     <li>Wpisuj nazwy zadań i <b>czas w dniach roboczych</b>. Daty początku i końca liczą się same na podstawie zależności i kalendarza (weekendy i polskie święta są pomijane).</li>
     <li><b>Czas 0</b> oznacza kamień milowy (◆). Wcięcie (<code>⇥</code>) robi z zadania podzadanie – wiersz nadrzędny staje się podsumowaniem i sam liczy daty oraz postęp.</li>
+    <li><b>Na wykresie</b> przeciągnij słupek, aby przesunąć zadanie (ustawia „Nie wcześniej niż”), albo chwyć jego lewą/prawą krawędź, aby zmienić początek lub czas trwania. Esc anuluje przeciąganie, Ctrl+Z cofa zmianę. Jeśli zadanie ma poprzedników, nie wejdzie przed nich – zmień wtedy powiązanie.</li>
     <li>Kliknij numer wiersza lub dowolną komórkę, aby zaznaczyć zadanie, a potem użyj przycisków na pasku (dodaj, usuń, przesuń, wcięcie).</li>
   </ul>
   <h3>Poprzednicy</h3>
@@ -527,13 +531,13 @@ function renderGantt(){
     let endX;
     if(r.mile){
       const cx=x+px/2;endX=cx+10;
-      out+=`<div class="ms${crit?' crit':''}" style="left:${cx-7}px;top:${top+7}px" title="${tip}"></div>`;
+      out+=`<div class="ms${crit?' crit':''}" data-i="${i}" style="left:${cx-7}px;top:${top+7}px" title="${tip}"></div>`;
     }else if(r.sum){
       endX=x+w;
       out+=`<div class="bar sum" style="left:${x}px;top:${top+9}px;width:${w}px" title="${tip}"><div class="pg" style="width:${r.pct}%"></div></div>`;
     }else{
       endX=x+w;
-      out+=`<div class="bar${crit?' crit':''}" style="left:${x}px;top:${top+6}px;width:${w}px" title="${tip}"><div class="pg" style="width:${r.pct}%"></div></div>`;
+      out+=`<div class="bar${crit?' crit':''}" data-i="${i}" style="left:${x}px;top:${top+6}px;width:${w}px" title="${tip}"><div class="pg" style="width:${r.pct}%"></div></div>`;
     }
     if(ui.base&&t.bs!==null&&t.bs!==undefined){
       const bx=(t.bs-v0)*px,bw=Math.max((t.be-t.bs+1)*px,4);
@@ -818,6 +822,63 @@ $('fSet').onsubmit=e=>{
   P.start=$('sStart').value;P.polish=$('sPl').checked;P.custom=$('sCust').value;P.workdays=days;
   setTimeout(fullRender,0);
 };
+
+/* =====================  PRZECIĄGANIE SŁUPKÓW NA WYKRESIE  ===================== */
+(()=>{
+  let d=null;
+  const tip=document.createElement('div');tip.id='dragTip';document.body.appendChild(tip);
+  const zoneOf=(el,clientX)=>{
+    if(el.classList.contains('ms'))return'm';
+    const r=el.getBoundingClientRect(),x=clientX-r.left,edge=Math.min(7,r.width/3);
+    return x<=edge?'l':x>=r.width-edge?'r':'m';
+  };
+  function calcDrag(i,mode,dd){
+    const r=R[i],t=tasks[i];
+    if(r.mile){const nd=r.sd+dd;return{snet:nd,dur:0,sd:nd,ed:nd}}
+    if(mode==='m'){const nd=r.sd+dd,k=lb(nd);return{snet:nd,dur:t.dur,sd:wdAt(k),ed:wdAt(k+t.dur-1)}}
+    if(mode==='r'){
+      const ne=r.ed+dd;let idx=lb(ne);if(wdAt(idx)>ne)idx--;
+      const dur=Math.max(1,idx-r.S+1);
+      return{snet:undefined,dur,sd:r.sd,ed:wdAt(r.S+dur-1)};
+    }
+    const ns=Math.min(r.sd+dd,r.ed),k=lb(ns);
+    return{snet:ns,dur:Math.max(1,r.E-k),sd:wdAt(k),ed:r.ed};
+  }
+  $('gBody').addEventListener('mousemove',e=>{
+    if(d)return;
+    const el=e.target.closest('.bar:not(.sum),.ms');
+    if(el)el.style.cursor=zoneOf(el,e.clientX)==='m'?'grab':'ew-resize';
+  });
+  $('gBody').addEventListener('mousedown',e=>{
+    const el=e.target.closest('.bar:not(.sum),.ms');
+    if(!el||e.button!==0)return;
+    const i=+el.dataset.i;setSel(tasks[i].uid);
+    d={i,mode:zoneOf(el,e.clientX),el,x0:e.clientX,dd:0,l0:el.style.left,w0:el.style.width};
+    el.classList.add('drag');document.body.style.userSelect='none';e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!d)return;
+    d.dd=Math.round((e.clientX-d.x0)/gView.px);
+    const c=calcDrag(d.i,d.mode,d.dd),r=R[d.i];
+    if(r.mile)d.el.style.left=((c.sd-gView.v0)*gView.px+gView.px/2-7)+'px';
+    else{d.el.style.left=((c.sd-gView.v0)*gView.px)+'px';d.el.style.width=Math.max((c.ed-c.sd+1)*gView.px,4)+'px'}
+    tip.textContent=r.mile?fmtD(c.sd):`${fmtD(c.sd)} – ${fmtD(c.ed)}  (${c.dur} dni rob.)`;
+    tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+16)+'px';tip.style.display='block';
+  });
+  function end(commit){
+    if(!d)return;const s=d;d=null;
+    tip.style.display='none';document.body.style.userSelect='';s.el.classList.remove('drag');
+    if(commit&&s.dd!==0){
+      const c=calcDrag(s.i,s.mode,s.dd),t=tasks[s.i];
+      pushUndo();
+      if(c.snet!==undefined)t.snet=dnToIso(c.snet);
+      t.dur=c.dur;
+      fullRender();
+    }else{s.el.style.left=s.l0;if(s.w0)s.el.style.width=s.w0}
+  }
+  window.addEventListener('mouseup',()=>end(true));
+  window.addEventListener('keydown',e=>{if(e.key==='Escape')end(false)});
+})();
 
 /* =====================  UKŁAD: PODZIAŁ, SCROLL, ZAKŁADKI  ===================== */
 $('right').addEventListener('scroll',()=>{$('tBody').scrollTop=$('right').scrollTop});
