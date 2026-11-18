@@ -60,7 +60,7 @@ header.top h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
 .gh1 div,.gh2 div{flex:none;text-align:center;font-size:11px;line-height:23px;border-right:1px solid #d3d9e4;overflow:hidden;color:var(--navy)}
 .gh2 div.we{background:#dfe4ec;color:#7a8396}
 .gh2 div.td{background:#ffc000;color:#000;font-weight:700}
-#gBody{position:relative}
+#gBody{position:relative;cursor:grab}
 .grow{position:absolute;left:0;right:0;height:var(--rowh);border-bottom:1px solid #eef0f4}
 .grow.sel{background:#e7f0fd}
 .nw{position:absolute;top:0;bottom:0;background:rgba(120,130,150,.08)}
@@ -163,6 +163,7 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
     <li>Wpisuj nazwy zadań i <b>czas w dniach roboczych</b>. Daty początku i końca liczą się same na podstawie zależności i kalendarza (weekendy i polskie święta są pomijane).</li>
     <li><b>Czas 0</b> oznacza kamień milowy (◆). Wcięcie (<code>⇥</code>) robi z zadania podzadanie – wiersz nadrzędny staje się podsumowaniem i sam liczy daty oraz postęp.</li>
     <li><b>Na wykresie</b> przeciągnij słupek, aby przesunąć zadanie (ustawia „Nie wcześniej niż”), albo chwyć jego lewą/prawą krawędź, aby zmienić początek lub czas trwania. Esc anuluje przeciąganie, Ctrl+Z cofa zmianę. Jeśli zadanie ma poprzedników, program sam koryguje opóźnienia w kolumnie „Poprzednicy” o przesunięcie w dniach roboczych (np. <code>3</code> → <code>3+2</code> po przesunięciu o 2 dni w prawo, <code>3-1</code> po przesunięciu o dzień w lewo). Zadanie bez poprzedników dostaje ustawienie „Nie wcześniej niż”.</li>
+    <li><b>Zoom i przesuwanie wykresu:</b> Ctrl + kółko myszy przybliża/oddala oś czasu (wokół kursora), a kliknięcie i przeciągnięcie pustego miejsca na wykresie przesuwa widok.</li>
     <li>Kliknij numer wiersza lub dowolną komórkę, aby zaznaczyć zadanie, a potem użyj przycisków na pasku (dodaj, usuń, przesuń, wcięcie).</li>
   </ul>
   <h3>Poprzednicy</h3>
@@ -259,7 +260,8 @@ const wdAt=s=>cal.wd[Math.min(Math.max(s,0),cal.wd.length-1)];
 let uidN=0;const newUid=()=>'t'+Date.now().toString(36)+(uidN++).toString(36);
 let P={name:'Nowy projekt',start:'',polish:true,custom:'',workdays:[1,2,3,4,5]};
 let tasks=[];
-const ui={sel:null,zoom:'week',crit:true,base:true,tab:'gantt'};
+const ui={sel:null,px:10,crit:true,base:true,tab:'gantt'};
+const zoomMode=px=>px>=16?'day':px>=6?'week':'month';
 let R=[];       // wyniki harmonogramowania
 let VIS=[];     // widoczne indeksy
 let calcInfo={cycle:false,end:0,start:0,critN:0,pct:0,wdays:0};
@@ -485,7 +487,8 @@ function refreshComputed(){
 /* =====================  GANTT NA EKRANIE  ===================== */
 let gView={v0:0,px:10};
 function renderGantt(){
-  const px={day:26,week:10,month:3.4}[ui.zoom];
+  const px=ui.px,zm=zoomMode(px);
+  if($('zoom').value!==zm)$('zoom').value=zm;
   let mn=Infinity,mx=-Infinity;
   R.forEach(r=>{if(r.sd<mn)mn=r.sd;if(r.ed>mx)mx=r.ed});
   if(!R.length){mn=isoToDn(P.start);mx=mn+30}
@@ -494,7 +497,7 @@ function renderGantt(){
   gView={v0,px,W};
   // nagłówek
   let h1='',h2='';
-  if(ui.zoom==='month'){
+  if(zm==='month'){
     let d=v0;
     while(d<=v1){const t=ymd(d);const yEnd=dnFromYMD(t.y+1,0,1);const e=Math.min(yEnd-1,v1);h1+=`<div style="width:${(e-d+1)*px}px">${t.y}</div>`;d=e+1}
     d=v0;
@@ -504,7 +507,7 @@ function renderGantt(){
     while(d<=v1){const t=ymd(d);const mEnd=dnFromYMD(t.y,t.m+1,1);const e=Math.min(mEnd-1,v1);const wpx=(e-d+1)*px;
       h1+=`<div style="width:${wpx}px">${wpx>110?MON_FULL[t.m]+' '+t.y:wpx>40?MON_SH[t.m]+' '+t.y:''}</div>`;d=e+1}
     const td=todayDn();
-    if(ui.zoom==='day'){
+    if(zm==='day'){
       for(let d2=v0;d2<=v1;d2++){const nw=!isWork(d2);h2+=`<div class="${d2===td?'td':nw?'we':''}" style="width:${px}px">${ymd(d2).d}</div>`}
     }else{
       for(let d2=v0;d2<=v1;d2+=7){const e=Math.min(d2+6,v1);h2+=`<div class="${td>=d2&&td<=d2+6?'td':''}" style="width:${(e-d2+1)*px}px">${ymd(d2).d}</div>`}
@@ -517,7 +520,7 @@ function renderGantt(){
   const gb=$('gBody');gb.style.width=W+'px';gb.style.height=H+'px';
   let out='';
   VIS.forEach((i,ri)=>{out+=`<div class="grow${ui.sel===tasks[i].uid?' sel':''}" data-i="${i}" style="top:${ri*ROWH}px"></div>`});
-  if(ui.zoom!=='month'){
+  if(zm!=='month'){
     for(let d=v0;d<=v1;d++)if(!isWork(d))out+=`<div class="nw" style="left:${(d-v0)*px}px;width:${px}px"></div>`;
   }
   const td=todayDn();
@@ -743,7 +746,45 @@ $('bBase').onclick=()=>{
 };
 $('bBaseClr').onclick=()=>{pushUndo();tasks.forEach(t=>{t.bs=null;t.be=null});recalcAndDraw()};
 $('pname').onchange=e=>{pushUndo();P.name=e.target.value;autosave()};
-$('zoom').onchange=e=>{ui.zoom=e.target.value;renderGantt()};
+$('zoom').onchange=e=>{setZoom({day:26,week:10,month:3.4}[e.target.value])};
+/* zoom wykresu: ciągły, zachowuje datę pod kursorem (lub środek widoku) */
+function setZoom(px,anchorX){
+  const right=$('right');
+  px=Math.max(2,Math.min(60,px));
+  if(Math.abs(px-ui.px)<1e-6)return;
+  const ax=anchorX===undefined?right.clientWidth/2:anchorX;
+  const dayAt=gView.v0+(right.scrollLeft+ax)/gView.px;
+  ui.px=px;renderGantt();
+  right.scrollLeft=Math.max(0,(dayAt-gView.v0)*px-ax);
+}
+$('right').addEventListener('wheel',e=>{
+  if(!e.ctrlKey)return;
+  e.preventDefault();
+  setZoom(ui.px*(e.deltaY<0?1.15:1/1.15),e.clientX-$('right').getBoundingClientRect().left);
+},{passive:false});
+/* przesuwanie widoku: klik i przeciągnięcie na pustym obszarze wykresu */
+(()=>{
+  let pan=null;
+  $('gBody').addEventListener('mousedown',e=>{
+    if(e.button!==0||e.target.closest('.bar:not(.sum),.ms'))return;
+    const r=$('right');
+    pan={x:e.clientX,y:e.clientY,sl:r.scrollLeft,st:r.scrollTop,moved:false};
+    r.style.cursor='grabbing';e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!pan)return;
+    const dx=e.clientX-pan.x,dy=e.clientY-pan.y;
+    if(Math.abs(dx)+Math.abs(dy)>3)pan.moved=true;
+    $('right').scrollLeft=pan.sl-dx;$('right').scrollTop=pan.st-dy;
+  });
+  window.addEventListener('mouseup',e=>{
+    if(!pan)return;const p=pan;pan=null;$('right').style.cursor='';
+    if(!p.moved){ // zwykłe kliknięcie zaznacza wiersz
+      const idx=Math.floor((e.clientY-$('gBody').getBoundingClientRect().top)/ROWH);
+      if(VIS[idx]!==undefined)setSel(tasks[VIS[idx]].uid);
+    }
+  });
+})();
 $('chCrit').onchange=e=>{ui.crit=e.target.checked;refreshComputed();renderGantt()};
 $('chBase').onchange=e=>{ui.base=e.target.checked;renderGantt()};
 $('bToday').onclick=()=>{
@@ -777,37 +818,39 @@ $('bNew').onclick=()=>{
   if(tasks.length&&!confirm('Rozpocząć nowy projekt z domyślnym szablonem? Niezapisane zmiany zostaną utracone (można je cofnąć Ctrl+Z).'))return;
   pushUndo();loadTemplate();
 };
-/* Domyślny szablon nowego projektu: [nazwa, czas (dni rob.), poziom, poprzednicy [[nr wiersza, rodzaj, opóźnienie]]] */
+/* Domyślny szablon nowego projektu (dane z pliku użytkownika):
+   [nazwa, czas (dni rob.), poziom, poprzednicy [[nr wiersza, rodzaj, opóźnienie]], zasoby, % ukończenia, „Nie wcześniej niż” jako przesunięcie w dniach kal. od startu] */
 const TEMPLATE=[
   ['1. Faza Projektu',0,0],
-  ['Dostarczenie danych projektowych',5,1],
-  ['Ustalenia bazowe',7,1,[[2]]],
-  ['Projekt Elektryczny',0,1,[[3]]],
-  ['Zakupy',3,1],
-  ['Prefabrykacja',4,1,[[5,'FS',-2]]],
-  ['Offline',1,1,[[4]]],
+  ['Dostarczenie danych prjektowych',5,1,[],'',100],
+  ['Ustalenia bazowe',7,1,[[2]],'Dominik,KrzysieTomek, Michał',60],
+  ['Prrojekt Elektryczny',0,1,[[3]],'Dominik'],
+  ['Zakupy',3,1,[],'Jakub',0,4],
+  ['Prefabrkacja',4,1,[[5,'FS',-2]],'Michał',0,8],
+  ['Offline',1,1,[[4]],'Krzysiek,Michał1'],
   ['Testy Produkcyjne',1,1],
   ['Start Produkcji',1,1],
   ['Odbiory',1,1],
   ['2. Offline',0,0],
-  ['Projekt EPLAN',8,1,[[4]]],
-  ['Projekt Mechaniczny',15,1,[[12,'FS',1]]],
-  ['Oprogramowanie PLC',5,1,[[4]]],
-  ['Oprogramowanie WIZU',9,1,[[13],[14],[2]]],
+  ['Projekt EPLAN',8,1,[[4]],'Stefan'],
+  ['Projekt Mechaniczny',15,1,[[12,'FS',1]],'Wili',0,36],
+  ['Oprogramowanie PLC',5,1,[[4]],'Gerard',0,21],
+  ['Oprogramowanie WIZU',9,1,[[13,'FS',1],[14,'FS',1],[2,'FS',1]],'Pudzian',0,68],
   ['Testy',0,1,[[15]]],
   ['3. Instalacja',0,0],
   ['Instalacja Mechaniczna',1,1],
   ['Instalacja Elektryczna',1,1],
   ['IO Check',1,1],
   ['Uruchomienie',1,1],
-  ['Testy produkcyjne',2,1,[[16],[23,'FS',1]]],
-  ['Szkolenia użytkowników',4,1,[[16]]],
+  ['Testy produkcyjne',2,1,[[16,'FS',2],[23,'FS',3]],'Marek, Tester[50%]'],
+  ['Szkolenia użytkowników',6,1,[[16]],'Paula{20%)'],
   ['Testy odbiorowe',0,1,[[23],[22]]],
   ['Dokumentacja',1,0],
   ['Zakończenie',1,0]];
 function loadTemplate(){
-  P={name:'Nowy projekt',start:dnToIso(nextMonday()),polish:true,custom:'',workdays:[1,2,3,4,5]};
-  tasks=TEMPLATE.map(([name,dur,level])=>mkTask({name,dur,level}));
+  const start=nextMonday();
+  P={name:'Nowy projekt',start:dnToIso(start),polish:true,custom:'',workdays:[1,2,3,4]};
+  tasks=TEMPLATE.map(([name,dur,level,,res,pct,off])=>mkTask({name,dur,level,res:res||'',pct:pct||0,snet:off?dnToIso(start+off):''}));
   TEMPLATE.forEach((x,i)=>{tasks[i].preds=(x[3]||[]).map(([r,t='FS',l=0])=>({u:tasks[r-1].uid,t,l}))});
   ui.sel=null;fullRender();
 }
