@@ -137,12 +137,10 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
   <label>Skala
     <select id="zoom"><option value="day">Dni</option><option value="week" selected>Tygodnie</option><option value="month">Miesiące</option></select>
   </label>
-  <label><input type="checkbox" id="chCrit" checked> Ścieżka krytyczna</label>
   <label><input type="checkbox" id="chBase" checked> Plan bazowy</label>
   <button class="btn" id="bToday">Dziś</button>
   <span class="sep"></span>
   <button class="btn" id="bSet">⚙ Ustawienia / kalendarz</button>
-  <button class="btn" id="bSample">Przykład</button>
 </div>
 
 <div class="tabs">
@@ -174,9 +172,9 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
     <li><code>3+2</code> – opóźnienie o 2 dni robocze, <code>3-1</code> – zakładka 1 dnia, <code>3RR+2</code> – oba naraz</li>
   </ul>
   <h3>Czas i zasoby</h3>
-  <p>Czas możesz wpisać jako <code>5</code>, <code>5d</code> lub <code>2w</code> (2 tygodnie = 10 dni). Zasoby wpisuj po przecinku, opcjonalnie z obłożeniem: <code>Anna, Piotr[50%]</code>. Zakładka „Obciążenie zasobów” pokazuje tygodnie, w których ktoś jest przeciążony (czerwone pola).</p>
-  <h3>Ścieżka krytyczna i plan bazowy</h3>
-  <p>Zadania na ścieżce krytycznej (zapas 0) są czerwone. „Zapisz plan bazowy” zapamiętuje obecne terminy – później na wykresie i w Excelu zobaczysz odchylenia.</p>
+  <p>Czas możesz wpisać jako <code>5</code>, <code>5d</code> lub <code>2w</code> (2 tygodnie = 10 dni). Zasoby wpisuj po przecinku, opcjonalnie z obłożeniem: <code>DB, TO[50%]</code>. Zakładka „Obciążenie zasobów” pokazuje tygodnie, w których ktoś jest przeciążony (czerwone pola).</p>
+  <h3>Plan bazowy</h3>
+  <p>„Zapisz plan bazowy” zapamiętuje obecne terminy – później na wykresie i w Excelu zobaczysz odchylenia.</p>
   <h3>Rozsyłanie do zainteresowanych</h3>
   <p><b>Eksport do Excela</b> tworzy plik .xlsx z arkuszami: <i>Gantt</i> (wykres z grupowaniem faz), <i>Lista zadań</i> (wszystkie kolumny z filtrem), <i>Kamienie milowe</i> i <i>Obciążenie zasobów</i>. Plik jest gotowy do wysłania mailem. Dane robocze zapisuj przyciskiem „Zapisz projekt” (.json) – tym plikiem wrócisz do edycji. Program zapamiętuje też ostatni stan w przeglądarce.</p>
 </div>
@@ -260,7 +258,9 @@ const wdAt=s=>cal.wd[Math.min(Math.max(s,0),cal.wd.length-1)];
 let uidN=0;const newUid=()=>'t'+Date.now().toString(36)+(uidN++).toString(36);
 let P={name:'Nowy projekt',start:'',polish:true,custom:'',workdays:[1,2,3,4,5]};
 let tasks=[];
-const ui={sel:null,px:10,crit:true,base:true,tab:'gantt'};
+/* Ścieżka krytyczna jest chwilowo wyłączona (obliczenia zostają, ale nic nie jest oznaczane ani eksportowane). */
+const FEATURE_CRIT=false;
+const ui={sel:null,px:10,crit:FEATURE_CRIT,base:true,tab:'gantt'};
 const zoomMode=px=>px>=16?'day':px>=6?'week':'month';
 let R=[];       // wyniki harmonogramowania
 let VIS=[];     // widoczne indeksy
@@ -597,7 +597,7 @@ function resourceLoad(){
 const r1=v=>Math.round(v*10)/10;
 function renderRes(){
   const L=resourceLoad();const el=$('viewRes');
-  if(!L.rows.length){el.innerHTML='<div class="hint">Brak przypisanych zasobów. Wpisz osoby w kolumnie „Zasoby” (np. <code>Anna, Piotr[50%]</code>).</div>';return}
+  if(!L.rows.length){el.innerHTML='<div class="hint">Brak przypisanych zasobów. Wpisz osoby w kolumnie „Zasoby” (np. <code>DB, TO[50%]</code>).</div>';return}
   let h='<p style="margin-top:0;color:#6b7385">Dni robocze zarezerwowane w tygodniu (każde zadanie liczone na 100% czasu pracy, chyba że podano <code>[50%]</code>). <span style="background:#f4b183;padding:1px 6px">czerwone</span> = więcej niż dni robocze w tygodniu.</p>';
   h+='<table class="rt"><tr><th class="nm">Zasób</th><th>Razem</th>'+L.weeks.map(w=>`<th title="Dni robocze w tygodniu: ${w.cap}">${fmtDM(w.s)}</th>`).join('')+'</tr>';
   L.rows.forEach(r=>{
@@ -613,7 +613,7 @@ function renderStatus(){
   if(tasks.length){
     s+=`<span>Start: <b>${fmtD(c.start)}</b></span><span>Koniec: <b>${fmtD(c.end)}</b></span>`+
        `<span>Czas trwania: <b>${c.wdays}</b> dni rob.</span><span>Ukończenie: <b>${c.pct}%</b></span>`+
-       `<span>Zadań krytycznych: <b>${c.critN}</b></span><span>Zadań: <b>${tasks.length}</b></span>`;
+       (FEATURE_CRIT?`<span>Zadań krytycznych: <b>${c.critN}</b></span>`:'')+`<span>Zadań: <b>${tasks.length}</b></span>`;
   }else s+='<span>Brak zadań</span>';
   $('status').innerHTML=s;
 }
@@ -785,7 +785,6 @@ $('right').addEventListener('wheel',e=>{
     }
   });
 })();
-$('chCrit').onchange=e=>{ui.crit=e.target.checked;refreshComputed();renderGantt()};
 $('chBase').onchange=e=>{ui.base=e.target.checked;renderGantt()};
 $('bToday').onclick=()=>{
   const td=todayDn();$('right').scrollLeft=Math.max(0,(td-gView.v0)*gView.px-200);
@@ -823,62 +822,35 @@ $('bNew').onclick=()=>{
 const TEMPLATE=[
   ['1. Faza Projektu',0,0],
   ['Dostarczenie danych prjektowych',5,1,[],'',100],
-  ['Ustalenia bazowe',7,1,[[2]],'Dominik,KrzysieTomek, Michał',60],
-  ['Prrojekt Elektryczny',0,1,[[3]],'Dominik'],
-  ['Zakupy',3,1,[],'Jakub',0,4],
-  ['Prefabrkacja',4,1,[[5,'FS',-2]],'Michał',0,8],
-  ['Offline',1,1,[[4]],'Krzysiek,Michał1'],
+  ['Ustalenia bazowe',7,1,[[2]],'DB, KL, TO',60],
+  ['Prrojekt Elektryczny',0,1,[[3]],'DB'],
+  ['Zakupy',3,1,[],'JS',0,4],
+  ['Prefabrkacja',4,1,[[5,'FS',-2]],'MS',0,8],
+  ['Offline',1,1,[[4]],'KL,MB,TH'],
   ['Testy Produkcyjne',1,1],
   ['Start Produkcji',1,1],
   ['Odbiory',1,1],
   ['2. Offline',0,0],
-  ['Projekt EPLAN',8,1,[[4]],'Stefan'],
-  ['Projekt Mechaniczny',15,1,[[12,'FS',1]],'Wili',0,36],
-  ['Oprogramowanie PLC',5,1,[[4]],'Gerard',0,21],
-  ['Oprogramowanie WIZU',9,1,[[13,'FS',1],[14,'FS',1],[2,'FS',1]],'Pudzian',0,68],
-  ['Testy',0,1,[[15]]],
+  ['Projekt EPLAN',8,1,[[4]],'DT,DB'],
+  ['Projekt Mechaniczny',15,1,[[12,'FS',6]],'MM',0,49],
+  ['Oprogramowanie PLC',5,1,[[4]],'TH',0,21],
+  ['Oprogramowanie WIZU',32,1,[[13,'FS',5],[14,'FS',5],[2,'FS',5]],'JP',0,77],
+  ['Testy',0,1,[[15,'FS',5]]],
   ['3. Instalacja',0,0],
   ['Instalacja Mechaniczna',1,1],
   ['Instalacja Elektryczna',1,1],
   ['IO Check',1,1],
   ['Uruchomienie',1,1],
-  ['Testy produkcyjne',2,1,[[16,'FS',2],[23,'FS',3]],'Marek, Tester[50%]'],
-  ['Szkolenia użytkowników',6,1,[[16]],'Paula{20%)'],
-  ['Testy odbiorowe',0,1,[[23],[22]]],
+  ['Testy produkcyjne',3,1,[[16,'FS',10],[23,'FS',11]],'JP, TO[50%]'],
+  ['Szkolenia użytkowników',6,1,[[16,'FS',7]],'PS[20%]'],
+  ['Testy odbiorowe',0,1,[[23,'FS',6],[22,'FS',6]]],
   ['Dokumentacja',1,0],
   ['Zakończenie',1,0]];
 function loadTemplate(){
   const start=nextMonday();
-  P={name:'Nowy projekt',start:dnToIso(start),polish:true,custom:'',workdays:[1,2,3,4]};
+  P={name:'Nowy projekt',start:dnToIso(start),polish:true,custom:'',workdays:[1,2,3,4,5]};
   tasks=TEMPLATE.map(([name,dur,level,,res,pct,off])=>mkTask({name,dur,level,res:res||'',pct:pct||0,snet:off?dnToIso(start+off):''}));
   TEMPLATE.forEach((x,i)=>{tasks[i].preds=(x[3]||[]).map(([r,t='FS',l=0])=>({u:tasks[r-1].uid,t,l}))});
-  ui.sel=null;fullRender();
-}
-$('bSample').onclick=()=>{
-  if(tasks.length&&!confirm('Zastąpić bieżący projekt przykładowym?'))return;
-  pushUndo();loadSample();
-};
-function loadSample(){
-  P={name:'Wdrożenie systemu – przykład',start:dnToIso(nextMonday()),polish:true,custom:'',workdays:[1,2,3,4,5]};
-  const T=(name,dur,level,res,pct)=>mkTask({name,dur,level,res:res||'',pct:pct||0});
-  tasks=[
-    T('Faza 1: Analiza',0,0),
-    T('Zebranie wymagań',5,1,'Anna',100),
-    T('Analiza i specyfikacja',7,1,'Anna, Piotr',60),
-    T('Akceptacja specyfikacji',0,1),
-    T('Faza 2: Realizacja',0,0),
-    T('Projekt techniczny',8,1,'Piotr'),
-    T('Wykonanie modułów',15,1,'Piotr, Marek'),
-    T('Przygotowanie środowiska',5,1,'Marek'),
-    T('Testy',10,1,'Ewa'),
-    T('Gotowość do wdrożenia',0,1),
-    T('Faza 3: Wdrożenie',0,0),
-    T('Szkolenia użytkowników',4,1,'Ewa'),
-    T('Uruchomienie produkcyjne',2,1,'Marek, Piotr[50%]'),
-    T('Zakończenie projektu',0,1)];
-  const link=(k,list)=>{tasks[k-1].preds=list.map(x=>{const [r,t='FS',l=0]=Array.isArray(x)?x:[x];return{u:tasks[r-1].uid,t,l}})};
-  link(3,[2]);link(4,[3]);link(6,[4]);link(7,[6]);link(8,[4]);link(9,[7,8]);link(10,[9]);link(12,[10]);link(13,[10,[12,'FS',1]]);link(14,[12,13]);
-  tasks[7].snet=dnToIso(nextMonday()+7*3);
   ui.sel=null;fullRender();
 }
 
@@ -1123,6 +1095,7 @@ async function zipFiles(files){
 const NAVY='1F3864';
 async function buildXlsx(){
   calc();
+  if(!FEATURE_CRIT)R.forEach(r=>{r.crit=false});
   const wb=new Wb();const td=todayDn();
   const n=tasks.length;
   const typeOf=r=>r.sum?'Podsumowanie':r.mile?'Kamień milowy':'Zadanie';
@@ -1149,7 +1122,7 @@ async function buildXlsx(){
   g.set(0,0,title,{b:1,sz:18,color:NAVY});g.rowH.set(0,28);
   g.set(1,0,projInfo,{sz:10,color:'595959'});
   // legenda
-  const lg=[['Zadanie',{fill:'A6C8EC'}],['Ukończone',{fill:'2F6EB5',color:'FFFFFF'}],['Krytyczne',{fill:'F4B6B6'}],['Krytyczne ukończone',{fill:'C00000',color:'FFFFFF'}],['Podsumowanie',{fill:'404040',color:'FFFFFF'}],['◆ Kamień milowy',{color:'7030A0',b:1}],['Dziś',{fill:'FFC000'}]];
+  const lg=[['Zadanie',{fill:'A6C8EC'}],['Ukończone',{fill:'2F6EB5',color:'FFFFFF'}],...(FEATURE_CRIT?[['Krytyczne',{fill:'F4B6B6'}],['Krytyczne ukończone',{fill:'C00000',color:'FFFFFF'}]]:[]),['Podsumowanie',{fill:'404040',color:'FFFFFF'}],['◆ Kamień milowy',{color:'7030A0',b:1}],['Dziś',{fill:'FFC000'}]];
   const lw=mode==='day'?9:mode==='week'?6:3;
   lg.forEach(([t,s],k)=>{const c0=TC+k*lw;if(c0+lw-1>=TC+periods.length)return;g.set(2,c0,t,{sz:8,h:'center',border:1,bc,...s});for(let c=1;c<lw;c++)g.set(2,c0+c,null,{border:1,bc,...s});g.merge(2,c0,2,c0+lw-1)});
   // nagłówek tabeli
@@ -1208,8 +1181,8 @@ async function buildXlsx(){
 
   /* ===== Arkusz 2: Lista zadań ===== */
   const L=wb.sheet('Lista zadań');L.tab='1E7A3C';
-  const hd=['Lp.','WBS','Nazwa zadania','Typ','Czas (dni rob.)','Start','Koniec','% ukończenia','Poprzednicy','Zasoby','Zapas (dni rob.)','Krytyczne','Nie wcześniej niż','Start bazowy','Koniec bazowy','Odchylenie końca (dni kal.)','Uwagi'];
-  const lw2=[5,8,46,15,10,12,12,11,14,24,10,10,14,12,12,14,40];
+  const hd=['Lp.','WBS','Nazwa zadania','Typ','Czas (dni rob.)','Start','Koniec','% ukończenia','Poprzednicy','Zasoby','Zapas (dni rob.)','Nie wcześniej niż','Start bazowy','Koniec bazowy','Odchylenie końca (dni kal.)','Uwagi'];
+  const lw2=[5,8,46,15,10,12,12,11,14,24,10,14,12,12,14,40];
   hd.forEach((h,c)=>{L.set(0,c,h,H);L.width(c,lw2[c])});L.rowH.set(0,34);
   tasks.forEach((t,i)=>{
     const r=R[i],row=i+1;
@@ -1223,13 +1196,12 @@ async function buildXlsx(){
     L.set(row,7,r.pct/100,{...hc,nf:'0%'});
     L.set(row,8,predToStr(t),hc);L.set(row,9,r.sum?'':t.res,b);
     L.set(row,10,r.float,hc);
-    L.set(row,11,r.crit&&!r.sum?'TAK':'',{...hc,color:'C00000',b:1});
-    const sn=isoToDn(t.snet);L.set(row,12,sn!==null&&!r.sum?xl(sn):null,{...hc,nf:'dd.mm.yyyy'});
+    const sn=isoToDn(t.snet);L.set(row,11,sn!==null&&!r.sum?xl(sn):null,{...hc,nf:'dd.mm.yyyy'});
     const hasB=t.bs!==null&&t.bs!==undefined;
-    L.set(row,13,hasB?xl(t.bs):null,{...hc,nf:'dd.mm.yyyy'});L.set(row,14,hasB?xl(t.be):null,{...hc,nf:'dd.mm.yyyy'});
+    L.set(row,12,hasB?xl(t.bs):null,{...hc,nf:'dd.mm.yyyy'});L.set(row,13,hasB?xl(t.be):null,{...hc,nf:'dd.mm.yyyy'});
     const dev=hasB?r.ed-t.be:null;
-    L.set(row,15,dev,{...hc,color:dev>0?'C00000':dev<0?'1E7A3C':'000000',b:dev?1:0});
-    L.set(row,16,t.notes||'',{...b,wrap:1});
+    L.set(row,14,dev,{...hc,color:dev>0?'C00000':dev<0?'1E7A3C':'000000',b:dev?1:0});
+    L.set(row,15,t.notes||'',{...b,wrap:1});
   });
   L.freeze=[1,3];
   L.filter={ref:`A1:${colL(hd.length-1)}${n+1}`,abs:`$A$1:$${colL(hd.length-1)}$${n+1}`};
