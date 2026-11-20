@@ -193,6 +193,18 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
   </form>
 </dialog>
 
+<dialog id="dlgExp">
+  <form method="dialog" id="fExp">
+    <h2>Eksport do Excela / Export to Excel</h2>
+    <div class="f"><label>Język pliku / File language</label>
+      <div class="days" style="flex-direction:column;gap:6px">
+        <label><input type="radio" name="xlang" value="pl" checked> Polski</label>
+        <label><input type="radio" name="xlang" value="en"> English <span style="color:var(--mut)">(nazwy zadań, zasoby i uwagi bez tłumaczenia / task names, resources and notes stay as entered)</span></label>
+      </div></div>
+    <div class="act"><button class="btn" value="cancel" type="button" id="eCancel">Anuluj / Cancel</button><button class="btn pri" value="ok">Eksportuj / Export</button></div>
+  </form>
+</dialog>
+
 <input type="file" id="fileIn" accept=".json,application/json" hidden>
 
 <script>
@@ -1093,20 +1105,53 @@ async function zipFiles(files){
 
 /* --- Budowa skoroszytu --- */
 const NAVY='1F3864';
-async function buildXlsx(){
+const MON_FULL_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MON_SH_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+/* Teksty eksportu. Treść zadań (nazwy, zasoby, uwagi, nazwa projektu) zawsze zostaje bez tłumaczenia. */
+const XT={
+  pl:{sGantt:'Gantt',sList:'Lista zadań',sMs:'Kamienie milowe',sRes:'Obciążenie zasobów',
+    tSum:'Podsumowanie',tMile:'Kamień milowy',tTask:'Zadanie',title:'Harmonogram projektu',
+    gen:'Wygenerowano',term:'Termin',dur:'Czas trwania',wd:'dni rob.',comp:'Ukończenie',
+    lTask:'Zadanie',lDone:'Ukończone',lCrit:'Krytyczne',lCritDone:'Krytyczne ukończone',lSum:'Podsumowanie',lMs:'◆ Kamień milowy',lToday:'Dziś',
+    gh:['Lp.','Nazwa zadania','Czas (dni rob.)','Start','Koniec','% ukoń.'],
+    lh:['Lp.','WBS','Nazwa zadania','Typ','Czas (dni rob.)','Start','Koniec','% ukończenia','Poprzednicy','Zasoby','Zapas (dni rob.)','Nie wcześniej niż','Start bazowy','Koniec bazowy','Odchylenie końca (dni kal.)','Uwagi'],
+    mh:['Lp.','Kamień milowy','Data','Dni do terminu','Status','Data bazowa','Odchylenie (dni kal.)'],
+    sDone:'Zrealizowany',sLate:'Po terminie',sNear:'Zbliża się (≤14 dni)',sPlan:'Planowany',
+    noMs:'Brak kamieni milowych w projekcie (kamień milowy = zadanie o czasie 0).',
+    resNote:'Dni robocze zarezerwowane w tygodniu (zadanie liczone na 100% czasu pracy, chyba że podano [50%]). Czerwone pole = przeciążenie (więcej niż dni roboczych w tygodniu).',
+    rh:['Zasób','Razem (dni)'],noRes:'Brak przypisanych zasobów.',file:'harmonogram',
+    mFull:MON_FULL,mSh:MON_SH,df:'dd.mm.yyyy',types:TYPE_OUT},
+  en:{sGantt:'Gantt',sList:'Task list',sMs:'Milestones',sRes:'Resource load',
+    tSum:'Summary',tMile:'Milestone',tTask:'Task',title:'Project schedule',
+    gen:'Generated',term:'Period',dur:'Duration',wd:'working days',comp:'Complete',
+    lTask:'Task',lDone:'Completed',lCrit:'Critical',lCritDone:'Critical completed',lSum:'Summary',lMs:'◆ Milestone',lToday:'Today',
+    gh:['No.','Task name','Duration (working days)','Start','Finish','% compl.'],
+    lh:['No.','WBS','Task name','Type','Duration (working days)','Start','Finish','% complete','Predecessors','Resources','Float (working days)','Start no earlier than','Baseline start','Baseline finish','Finish variance (calendar days)','Notes'],
+    mh:['No.','Milestone','Date','Days to deadline','Status','Baseline date','Variance (calendar days)'],
+    sDone:'Completed',sLate:'Overdue',sNear:'Approaching (≤14 days)',sPlan:'Planned',
+    noMs:'No milestones in the project (milestone = task with duration 0).',
+    resNote:'Working days booked per week (each task counted at 100% of working time unless [50%] is given). Red cell = overallocation (more than the working days in the week).',
+    rh:['Resource','Total (days)'],noRes:'No resources assigned.',file:'schedule',
+    mFull:MON_FULL_EN,mSh:MON_SH_EN,df:'[$-409]dd mmm yyyy',types:{FS:'',SS:'SS',FF:'FF',SF:'SF'}}
+};
+async function buildXlsx(lang='pl'){
+  const T=XT[lang]||XT.pl;
   calc();
   if(!FEATURE_CRIT)R.forEach(r=>{r.crit=false});
   const wb=new Wb();const td=todayDn();
   const n=tasks.length;
-  const typeOf=r=>r.sum?'Podsumowanie':r.mile?'Kamień milowy':'Zadanie';
+  const DF=T.df;
+  const typeOf=r=>r.sum?T.tSum:r.mile?T.tMile:T.tTask;
+  const predStr=t=>{const idx=new Map(tasks.map((x,i)=>[x.uid,i+1]));
+    return t.preds.filter(p=>idx.has(p.u)).map(p=>idx.get(p.u)+T.types[p.t]+(p.l?(p.l>0?'+':'')+p.l:'')).join(', ')};
   const H={b:1,color:'FFFFFF',fill:NAVY,h:'center',wrap:1,border:1,bc:'8EA3C4',sz:10};
   const bc='D9D9D9';
-  const title=P.name||'Harmonogram projektu';
-  const stamp=`Wygenerowano: ${fmtD(td)}`;
-  const projInfo=n?`Termin: ${fmtD(calcInfo.start)} – ${fmtD(calcInfo.end)}   |   Czas trwania: ${calcInfo.wdays} dni rob.   |   Ukończenie: ${calcInfo.pct}%   |   ${stamp}`:stamp;
+  const title=P.name||T.title;
+  const stamp=`${T.gen}: ${fmtD(td)}`;
+  const projInfo=n?`${T.term}: ${fmtD(calcInfo.start)} – ${fmtD(calcInfo.end)}   |   ${T.dur}: ${calcInfo.wdays} ${T.wd}   |   ${T.comp}: ${calcInfo.pct}%   |   ${stamp}`:stamp;
 
   /* ===== Arkusz 1: Gantt ===== */
-  const g=wb.sheet('Gantt');g.tab='2F6EB5';g.paper=8;
+  const g=wb.sheet(T.sGantt);g.tab='2F6EB5';g.paper=8;
   let mn=Infinity,mx=-Infinity;R.forEach(r=>{if(r.sd<mn)mn=r.sd;if(r.ed>mx)mx=r.ed});
   if(!n){mn=isoToDn(P.start);mx=mn+30}
   const span=mx-mn;
@@ -1117,26 +1162,26 @@ async function buildXlsx(){
   else{let t=ymd(mn);let y=t.y,m=t.m;while(dnFromYMD(y,m,1)<=mx){periods.push({s:dnFromYMD(y,m,1),e:dnFromYMD(y,m+1,1)-1});m++;if(m>11){m=0;y++}}}
   const TC=6,HR=3; // kolumny tabeli; wiersz nagłówka (0-based)
   const gw={day:2.6,week:3.3,month:7}[mode];
-  g.width(0,5);g.width(1,44);g.width(2,8);g.width(3,11);g.width(4,11);g.width(5,8);
+  g.width(0,5);g.width(1,44);g.width(2,lang==='en'?10:8);g.width(3,12);g.width(4,12);g.width(5,8);
   periods.forEach((p,k)=>g.width(TC+k,gw));
   g.set(0,0,title,{b:1,sz:18,color:NAVY});g.rowH.set(0,28);
   g.set(1,0,projInfo,{sz:10,color:'595959'});
   // legenda
-  const lg=[['Zadanie',{fill:'A6C8EC'}],['Ukończone',{fill:'2F6EB5',color:'FFFFFF'}],...(FEATURE_CRIT?[['Krytyczne',{fill:'F4B6B6'}],['Krytyczne ukończone',{fill:'C00000',color:'FFFFFF'}]]:[]),['Podsumowanie',{fill:'404040',color:'FFFFFF'}],['◆ Kamień milowy',{color:'7030A0',b:1}],['Dziś',{fill:'FFC000'}]];
+  const lg=[[T.lTask,{fill:'A6C8EC'}],[T.lDone,{fill:'2F6EB5',color:'FFFFFF'}],...(FEATURE_CRIT?[[T.lCrit,{fill:'F4B6B6'}],[T.lCritDone,{fill:'C00000',color:'FFFFFF'}]]:[]),[T.lSum,{fill:'404040',color:'FFFFFF'}],[T.lMs,{color:'7030A0',b:1}],[T.lToday,{fill:'FFC000'}]];
   const lw=mode==='day'?9:mode==='week'?6:3;
   lg.forEach(([t,s],k)=>{const c0=TC+k*lw;if(c0+lw-1>=TC+periods.length)return;g.set(2,c0,t,{sz:8,h:'center',border:1,bc,...s});for(let c=1;c<lw;c++)g.set(2,c0+c,null,{border:1,bc,...s});g.merge(2,c0,2,c0+lw-1)});
   // nagłówek tabeli
-  ['Lp.','Nazwa zadania','Czas (dni rob.)','Start','Koniec','% ukoń.'].forEach((h,c)=>{g.set(HR,c,h,H);g.set(HR+1,c,null,H);g.merge(HR,c,HR+1,c)});
+  T.gh.forEach((h,c)=>{g.set(HR,c,h,H);g.set(HR+1,c,null,H);g.merge(HR,c,HR+1,c)});
   g.rowH.set(HR,18);g.rowH.set(HR+1,mode==='week'?36:20);
   // nagłówek osi czasu
   const hdrTop=(k,label)=>g.set(HR,TC+k,label,{...H,sz:9});
   if(mode==='month'){
     let k=0;while(k<periods.length){const y=ymd(periods[k].s).y;let k2=k;while(k2+1<periods.length&&ymd(periods[k2+1].s).y===y)k2++;
       hdrTop(k,String(y));for(let c=k+1;c<=k2;c++)hdrTop(c,null);g.merge(HR,TC+k,HR,TC+k2);k=k2+1}
-    periods.forEach((p,k)=>g.set(HR+1,TC+k,MON_SH[ymd(p.s).m],{...H,sz:8}));
+    periods.forEach((p,k)=>g.set(HR+1,TC+k,T.mSh[ymd(p.s).m],{...H,sz:8}));
   }else{
     let k=0;while(k<periods.length){const t=ymd(periods[k].s);let k2=k;while(k2+1<periods.length&&ymd(periods[k2+1].s).m===t.m&&ymd(periods[k2+1].s).y===t.y)k2++;
-      const lab=(k2-k+1)*(mode==='day'?1:7)>=(mode==='day'?5:14)?`${MON_FULL[t.m]} ${t.y}`:(k2-k+1)*(mode==='day'?1:7)>=3?MON_SH[t.m]:'';
+      const lab=(k2-k+1)*(mode==='day'?1:7)>=(mode==='day'?5:14)?`${T.mFull[t.m]} ${t.y}`:(k2-k+1)*(mode==='day'?1:7)>=3?T.mSh[t.m]:'';
       hdrTop(k,lab);for(let c=k+1;c<=k2;c++)hdrTop(c,null);g.merge(HR,TC+k,HR,TC+k2);k=k2+1}
     periods.forEach((p,k)=>{
       const isTd=td>=p.s&&td<=p.e;const nw=mode==='day'&&!isWork(p.s);
@@ -1154,8 +1199,8 @@ async function buildXlsx(){
     g.set(row,0,i+1,{...base,h:'center',color:'7F7F7F'});
     g.set(row,1,t.name||'',{...base,ind:Math.min(t.level*2,14),color:r.crit&&!r.sum?'C00000':'000000'});
     g.set(row,2,r.sum?r.dur:t.dur,{...base,h:'center'});
-    g.set(row,3,xl(r.sd),{...base,h:'center',nf:'dd.mm.yyyy'});
-    g.set(row,4,xl(r.ed),{...base,h:'center',nf:'dd.mm.yyyy'});
+    g.set(row,3,xl(r.sd),{...base,h:'center',nf:DF});
+    g.set(row,4,xl(r.ed),{...base,h:'center',nf:DF});
     g.set(row,5,r.pct/100,{...base,h:'center',nf:'0%'});
     const de=doneEnd(r);
     periods.forEach((p,k)=>{
@@ -1177,12 +1222,12 @@ async function buildXlsx(){
     if(t.level>0){g.rowOl.set(row,Math.min(t.level,7));g.maxOl=Math.max(g.maxOl,Math.min(t.level,7))}
   });
   g.freeze=[HR+2,TC];
-  g.titles=`'Gantt'!$A:$F,'Gantt'!$${HR+1}:$${HR+2}`;
+  g.titles=`'${g.name}'!$A:$F,'${g.name}'!$${HR+1}:$${HR+2}`;
 
   /* ===== Arkusz 2: Lista zadań ===== */
-  const L=wb.sheet('Lista zadań');L.tab='1E7A3C';
-  const hd=['Lp.','WBS','Nazwa zadania','Typ','Czas (dni rob.)','Start','Koniec','% ukończenia','Poprzednicy','Zasoby','Zapas (dni rob.)','Nie wcześniej niż','Start bazowy','Koniec bazowy','Odchylenie końca (dni kal.)','Uwagi'];
-  const lw2=[5,8,46,15,10,12,12,11,14,24,10,14,12,12,14,40];
+  const L=wb.sheet(T.sList);L.tab='1E7A3C';
+  const hd=T.lh;
+  const lw2=[5,8,46,15,12,13,13,11,14,24,11,14,13,13,15,40];
   hd.forEach((h,c)=>{L.set(0,c,h,H);L.width(c,lw2[c])});L.rowH.set(0,34);
   tasks.forEach((t,i)=>{
     const r=R[i],row=i+1;
@@ -1192,25 +1237,25 @@ async function buildXlsx(){
     L.set(row,2,t.name||'',{...b,ind:Math.min(t.level*2,14)});
     L.set(row,3,typeOf(r),hc);
     L.set(row,4,r.sum?r.dur:t.dur,hc);
-    L.set(row,5,xl(r.sd),{...hc,nf:'dd.mm.yyyy'});L.set(row,6,xl(r.ed),{...hc,nf:'dd.mm.yyyy'});
+    L.set(row,5,xl(r.sd),{...hc,nf:DF});L.set(row,6,xl(r.ed),{...hc,nf:DF});
     L.set(row,7,r.pct/100,{...hc,nf:'0%'});
-    L.set(row,8,predToStr(t),hc);L.set(row,9,r.sum?'':t.res,b);
+    L.set(row,8,predStr(t),hc);L.set(row,9,r.sum?'':t.res,b);
     L.set(row,10,r.float,hc);
-    const sn=isoToDn(t.snet);L.set(row,11,sn!==null&&!r.sum?xl(sn):null,{...hc,nf:'dd.mm.yyyy'});
+    const sn=isoToDn(t.snet);L.set(row,11,sn!==null&&!r.sum?xl(sn):null,{...hc,nf:DF});
     const hasB=t.bs!==null&&t.bs!==undefined;
-    L.set(row,12,hasB?xl(t.bs):null,{...hc,nf:'dd.mm.yyyy'});L.set(row,13,hasB?xl(t.be):null,{...hc,nf:'dd.mm.yyyy'});
+    L.set(row,12,hasB?xl(t.bs):null,{...hc,nf:DF});L.set(row,13,hasB?xl(t.be):null,{...hc,nf:DF});
     const dev=hasB?r.ed-t.be:null;
     L.set(row,14,dev,{...hc,color:dev>0?'C00000':dev<0?'1E7A3C':'000000',b:dev?1:0});
     L.set(row,15,t.notes||'',{...b,wrap:1});
   });
   L.freeze=[1,3];
   L.filter={ref:`A1:${colL(hd.length-1)}${n+1}`,abs:`$A$1:$${colL(hd.length-1)}$${n+1}`};
-  L.titles=`'Lista zadań'!$1:$1`;
+  L.titles=`'${L.name}'!$1:$1`;
 
   /* ===== Arkusz 3: Kamienie milowe ===== */
-  const M=wb.sheet('Kamienie milowe');M.tab='7030A0';
-  const mh=['Lp.','Kamień milowy','Data','Dni do terminu','Status','Data bazowa','Odchylenie (dni kal.)'];
-  const mw=[6,48,13,14,18,13,16];
+  const M=wb.sheet(T.sMs);M.tab='7030A0';
+  const mh=T.mh;
+  const mw=[6,48,14,14,22,14,18];
   mh.forEach((h,c)=>{M.set(0,c,h,H);M.width(c,mw[c])});M.rowH.set(0,30);
   let mr=1;
   tasks.forEach((t,i)=>{
@@ -1218,30 +1263,30 @@ async function buildXlsx(){
     const b={sz:10,border:1,bc},hc={...b,h:'center'};
     const left=r.sd-td;
     let status,fill,col='000000';
-    if(r.pct>=100){status='Zrealizowany';fill='C6EFCE';col='006100'}
-    else if(left<0){status='Po terminie';fill='FFC7CE';col='9C0006'}
-    else if(left<=14){status='Zbliża się (≤14 dni)';fill='FFEB9C';col='7F6000'}
-    else{status='Planowany';fill='DDEBF7'}
+    if(r.pct>=100){status=T.sDone;fill='C6EFCE';col='006100'}
+    else if(left<0){status=T.sLate;fill='FFC7CE';col='9C0006'}
+    else if(left<=14){status=T.sNear;fill='FFEB9C';col='7F6000'}
+    else{status=T.sPlan;fill='DDEBF7'}
     M.set(mr,0,i+1,hc);M.set(mr,1,t.name||'',{...b,ind:Math.min(t.level*2,14)});
-    M.set(mr,2,xl(r.sd),{...hc,nf:'dd.mm.yyyy',b:1});
+    M.set(mr,2,xl(r.sd),{...hc,nf:DF,b:1});
     M.set(mr,3,r.pct>=100?null:left,hc);
     M.set(mr,4,status,{...hc,fill,color:col,b:1});
     const hasB=t.bs!==null&&t.bs!==undefined;
-    M.set(mr,5,hasB?xl(t.be):null,{...hc,nf:'dd.mm.yyyy'});
+    M.set(mr,5,hasB?xl(t.be):null,{...hc,nf:DF});
     const dev=hasB?r.ed-t.be:null;
     M.set(mr,6,dev,{...hc,color:dev>0?'C00000':dev<0?'1E7A3C':'000000',b:dev?1:0});
     mr++;
   });
-  if(mr===1)M.set(1,1,'Brak kamieni milowych w projekcie (kamień milowy = zadanie o czasie 0).',{i:1,color:'7F7F7F'});
+  if(mr===1)M.set(1,1,T.noMs,{i:1,color:'7F7F7F'});
   M.freeze=[1,0];
 
   /* ===== Arkusz 4: Obciążenie zasobów ===== */
-  const Z=wb.sheet('Obciążenie zasobów');Z.tab='ED7D31';
+  const Z=wb.sheet(T.sRes);Z.tab='ED7D31';
   const LD=resourceLoad();
-  Z.set(0,0,'Dni robocze zarezerwowane w tygodniu (zadanie liczone na 100% czasu pracy, chyba że podano [50%]). Czerwone pole = przeciążenie (więcej niż dni roboczych w tygodniu).',{i:1,color:'595959',sz:9});
-  Z.set(1,0,'Zasób',H);Z.set(1,1,'Razem (dni)',H);Z.width(0,28);Z.width(1,11);Z.rowH.set(1,42);
+  Z.set(0,0,T.resNote,{i:1,color:'595959',sz:9});
+  Z.set(1,0,T.rh[0],H);Z.set(1,1,T.rh[1],H);Z.width(0,28);Z.width(1,12);Z.rowH.set(1,42);
   LD.weeks.forEach((w,k)=>{Z.set(1,2+k,fmtDM(w.s),{...H,rot:90,sz:9});Z.width(2+k,4.6)});
-  if(!LD.rows.length)Z.set(2,0,'Brak przypisanych zasobów.',{i:1,color:'7F7F7F'});
+  if(!LD.rows.length)Z.set(2,0,T.noRes,{i:1,color:'7F7F7F'});
   LD.rows.forEach((r,ri)=>{
     const row=2+ri;
     Z.set(row,0,r.name,{sz:10,b:1,border:1,bc});Z.set(row,1,r1(r.total),{sz:10,b:1,border:1,bc,h:'center'});
@@ -1254,16 +1299,27 @@ async function buildXlsx(){
 
   return wb.build();
 }
-$('bXlsx').onclick=async()=>{
+$('bXlsx').onclick=()=>{
   if(!tasks.length){alert('Dodaj najpierw zadania do harmonogramu.');return}
+  let last='pl';try{last=localStorage.getItem('harmonogram_xlang')||'pl'}catch(e){}
+  document.querySelectorAll('#fExp input[name=xlang]').forEach(r=>r.checked=r.value===last);
+  $('dlgExp').showModal();
+};
+$('eCancel').onclick=()=>$('dlgExp').close();
+$('fExp').onsubmit=e=>{
+  const lang=(document.querySelector('#fExp input[name=xlang]:checked')||{}).value||'pl';
+  try{localStorage.setItem('harmonogram_xlang',lang)}catch(err){}
+  setTimeout(()=>exportXlsx(lang),0);
+};
+async function exportXlsx(lang){
   const btn=$('bXlsx');btn.disabled=true;
   try{
-    const blob=await buildXlsx();
+    const blob=await buildXlsx(lang);
     const d=ymd(todayDn());
-    download(blob,`${safeName(P.name)}_harmonogram_${d.y}${pad(d.m+1)}${pad(d.d)}.xlsx`);
-  }catch(err){console.error(err);alert('Błąd eksportu: '+err.message)}
+    download(blob,`${safeName(P.name)}_${XT[lang].file}_${d.y}${pad(d.m+1)}${pad(d.d)}.xlsx`);
+  }catch(err){console.error(err);alert('Błąd eksportu / Export error: '+err.message)}
   btn.disabled=false;
-};
+}
 
 /* =====================  START  ===================== */
 (function init(){
