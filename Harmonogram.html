@@ -17,6 +17,8 @@ header.top{background:var(--navy);color:#fff;padding:8px 14px;display:flex;align
 header.top h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
 #pname{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:4px;padding:4px 8px;min-width:260px;font-size:14px;font-weight:600}
 #pname:focus{outline:2px solid #ffc000}
+#updBar{background:#fff3cd;border-bottom:1px solid #e6cf7a;padding:6px 14px;display:flex;align-items:center;gap:10px;color:#5c4a00}
+#updBar[hidden]{display:none}
 .toolbar{background:#fff;border-bottom:1px solid var(--line);padding:6px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .toolbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
 .btn{background:#fff;border:1px solid #c5ccd8;border-radius:5px;padding:5px 10px;cursor:pointer;color:var(--txt);white-space:nowrap}
@@ -114,6 +116,12 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
   <input id="pname" title="Nazwa projektu" placeholder="Nazwa projektu">
 </header>
 
+<div id="updBar" hidden>
+  <span id="updTxt"></span>
+  <button class="btn pri" id="updGo">Zaktualizuj</button>
+  <button class="btn" id="updLater">Później</button>
+</div>
+
 <div class="toolbar" id="toolbar">
   <button class="btn" id="bNew" title="Nowy, pusty projekt">Nowy</button>
   <button class="btn" id="bOpen" title="Otwórz projekt z pliku .json">Otwórz…</button>
@@ -175,6 +183,8 @@ dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
   <p>Czas możesz wpisać jako <code>5</code>, <code>5d</code> lub <code>2w</code> (2 tygodnie = 10 dni). Zasoby wpisuj po przecinku, opcjonalnie z obłożeniem: <code>DB, TO[50%]</code>. Zakładka „Obciążenie zasobów” pokazuje tygodnie, w których ktoś jest przeciążony (czerwone pola).</p>
   <h3>Plan bazowy</h3>
   <p>„Zapisz plan bazowy” zapamiętuje obecne terminy – później na wykresie i w Excelu zobaczysz odchylenia.</p>
+  <h3>Aktualizacje</h3>
+  <p>Przy uruchomieniu program sprawdza w repozytorium projektu, czy jest nowsza wersja (pobierany jest tylko publiczny plik programu, żadne dane projektu nie są wysyłane). Gdy jest, u góry pojawia się pasek z przyciskiem <b>Zaktualizuj</b>: w Edge/Chrome wskaż otwarty plik <code>Harmonogram.html</code> do nadpisania, w innych przeglądarkach nowy plik zostanie pobrany. Projekt zapisany w przeglądarce zostaje zachowany. Ręcznie sprawdzisz to w pasku na dole: „Sprawdź aktualizacje”.</p>
   <h3>Rozsyłanie do zainteresowanych</h3>
   <p><b>Eksport do Excela</b> tworzy plik .xlsx z arkuszami: <i>Gantt</i> (wykres z grupowaniem faz), <i>Lista zadań</i> (wszystkie kolumny z filtrem), <i>Kamienie milowe</i> i <i>Obciążenie zasobów</i>. Plik jest gotowy do wysłania mailem. Dane robocze zapisuj przyciskiem „Zapisz projekt” (.json) – tym plikiem wrócisz do edycji. Program zapamiętuje też ostatni stan w przeglądarce.</p>
 </div>
@@ -270,6 +280,9 @@ const wdAt=s=>cal.wd[Math.min(Math.max(s,0),cal.wd.length-1)];
 let uidN=0;const newUid=()=>'t'+Date.now().toString(36)+(uidN++).toString(36);
 let P={name:'Nowy projekt',start:'',polish:true,custom:'',workdays:[1,2,3,4,5]};
 let tasks=[];
+/* Numer wersji: przy wydaniu zwiększ go i wyślij plik do gałęzi main – programy użytkowników zaproponują aktualizację. */
+const APP_VERSION='1.1.0';
+const UPDATE_URL='https://raw.githubusercontent.com/xthomx/HarmonogramProjektu/main/Harmonogram.html';
 /* Ścieżka krytyczna jest chwilowo wyłączona (obliczenia zostają, ale nic nie jest oznaczane ani eksportowane). */
 const FEATURE_CRIT=false;
 const ui={sel:null,px:10,crit:FEATURE_CRIT,base:true,tab:'gantt'};
@@ -627,6 +640,7 @@ function renderStatus(){
        `<span>Czas trwania: <b>${c.wdays}</b> dni rob.</span><span>Ukończenie: <b>${c.pct}%</b></span>`+
        (FEATURE_CRIT?`<span>Zadań krytycznych: <b>${c.critN}</b></span>`:'')+`<span>Zadań: <b>${tasks.length}</b></span>`;
   }else s+='<span>Brak zadań</span>';
+  s+=`<span style="margin-left:auto">Wersja ${APP_VERSION} · <a href="#" id="chkUpd" style="color:#9fc5ff">Sprawdź aktualizacje</a></span>`;
   $('status').innerHTML=s;
 }
 let saveT=null;
@@ -1321,6 +1335,46 @@ async function exportXlsx(lang){
   btn.disabled=false;
 }
 
+/* =====================  AKTUALIZACJE  ===================== */
+const verCmp=(a,b)=>{const x=a.split('.').map(Number),y=b.split('.').map(Number);for(let i=0;i<3;i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0?1:-1}return 0};
+let pendingUpdate=null;
+function showUpdateBar(){
+  $('updTxt').textContent=`Dostępna nowa wersja ${pendingUpdate.ver} (używasz ${APP_VERSION}). Twój projekt jest zapisany w przeglądarce i zostanie zachowany.`;
+  $('updBar').hidden=false;
+}
+/* Sprawdza numer wersji w repozytorium. Pobierany jest tylko publiczny plik; żadne dane projektu nie są wysyłane. */
+async function checkUpdate(manual,url=UPDATE_URL){
+  try{
+    const r=await fetch(url,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const txt=await r.text();
+    const m=/const APP_VERSION='(\d+\.\d+\.\d+)'/.exec(txt);
+    if(!m)throw new Error('brak numeru wersji w pliku');
+    if(verCmp(m[1],APP_VERSION)>0){
+      let dismissed='';try{dismissed=localStorage.getItem('harmonogram_dismiss')||''}catch(e){}
+      if(manual||dismissed!==m[1]){pendingUpdate={ver:m[1],txt};showUpdateBar()}
+    }else if(manual)alert(`Masz aktualną wersję (${APP_VERSION}).`);
+  }catch(e){if(manual)alert('Nie udało się sprawdzić aktualizacji: '+e.message)}
+}
+async function applyUpdate(){
+  const u=pendingUpdate;if(!u)return;
+  if(location.protocol.startsWith('http')){location.reload();return} // strona hostowana: wystarczy odświeżyć
+  const blob=new Blob([u.txt],{type:'text/html;charset=utf-8'});
+  if(window.showSaveFilePicker){
+    try{
+      const h=await window.showSaveFilePicker({suggestedName:'Harmonogram.html',types:[{description:'Harmonogram (HTML)',accept:{'text/html':['.html']}}]});
+      const w=await h.createWritable();await w.write(blob);await w.close();
+      alert(`Zapisano wersję ${u.ver}. Za chwilę strona zostanie odświeżona – jeśli nadpisałeś otwarty plik, zobaczysz nową wersję; jeśli zapisałeś go gdzie indziej, otwórz ten nowy plik.`);
+      location.reload();return;
+    }catch(e){if(e.name==='AbortError')return}
+  }
+  download(blob,'Harmonogram.html');
+  alert(`Pobrano wersję ${u.ver} (plik Harmonogram.html). Zastąp nim dotychczasowy plik programu i otwórz go ponownie.`);
+}
+$('updGo').onclick=applyUpdate;
+$('updLater').onclick=()=>{try{localStorage.setItem('harmonogram_dismiss',pendingUpdate.ver)}catch(e){}$('updBar').hidden=true};
+$('status').addEventListener('click',e=>{if(e.target.id==='chkUpd'){e.preventDefault();checkUpdate(true)}});
+
 /* =====================  START  ===================== */
 (function init(){
   let loaded=false;
@@ -1329,7 +1383,8 @@ async function exportXlsx(lang){
     if(s){const o=JSON.parse(s);if(o.P&&Array.isArray(o.tasks)&&o.tasks.length){P=o.P;tasks=o.tasks.map(t=>mkTask(t));loaded=true}}
   }catch(e){}
   if(loaded)fullRender();else loadTemplate();
-  window.__app={buildXlsx,get tasks(){return tasks},get R(){return R},calc,get P(){return P}};
+  if(navigator.onLine!==false)setTimeout(()=>checkUpdate(false),2500);
+  window.__app={checkUpdate,verCmp,get pendingUpdate(){return pendingUpdate},buildXlsx,get tasks(){return tasks},get R(){return R},calc,get P(){return P}};
 })();
 </script>
 </body>
